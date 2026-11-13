@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project Rakshak - Analytics & Benchmark Dashboard</title>
+  <script src="benchmarks.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #090d16;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding: 20px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+    h1 { font-size: 24px; color: #38bdf8; }
+    .badge {
+      background: #0284c7;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+    .grid-container {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+    }
+    .card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .card h2 {
+      font-size: 15px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 6px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      color: #cbd5e1;
+      margin-top: 10px;
+    }
+    select, input[type=range] {
+      width: 100%;
+      margin-top: 4px;
+      background: #1e293b;
+      color: #fff;
+      border: 1px solid #334155;
+      padding: 6px;
+      border-radius: 6px;
+    }
+    button {
+      width: 100%;
+      margin-top: 14px;
+      background: #0284c7;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #0369a1; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 8px 10px;
+      border: 1px solid #1e293b;
+      text-align: left;
+    }
+    th { background: #1e293b; color: #94a3b8; }
+    #freqChart { display: block; width: 100%; }
+    .chart-box {
+      height: 250px;
+      margin-bottom: 20px;
+    }
+    .nav-link {
+      color: #38bdf8;
+      text-decoration: none;
+      font-size: 13px;
+      margin-right: 15px;
+    }
+    .nav-link:hover { text-decoration: underline; }
+    @media (max-width: 900px) {
+      header { flex-wrap: wrap; gap: 10px; }
+      .grid-container { grid-template-columns: minmax(0, 1fr); gap: 0; }
+      th, td { padding: 5px; font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>⚡ Project Rakshak: Analytical Benchmark Engine</h1>
+      <p style="font-size: 12px; color: #94a3b8;">Compare control policies under the same simulated disturbance</p>
+    </div>
+    <div>
+      <a href="index.html" class="nav-link">🏙 3D Simulation Testbed</a>
+      <span class="badge">500-building simulation</span>
+    </div>
+  </header>
+
+  <div class="grid-container">
+    <div>
+      <div class="card">
+        <h2>Scenario Controls</h2>
+        <label for="disturbance">Disturbance</label>
+        <select id="disturbance">
+          <option value="generation_loss">Generation loss</option>
+          <option value="demand_surge">Demand surge</option>
+          <option value="solar_surplus">Solar surplus</option>
+        </select>
+        <label>Enrollment: <b id="participationVal">100%</b>
+          <input type="range" id="participation" min="0" max="100" value="100">
+        </label>
+        <label>Clinical backup: <b id="backupVal">2 min</b>
+          <input type="range" id="backup" min="0" max="10" value="2">
+        </label>
+        <label>Disturbance Size: <b id="lossVal">18%</b>
+          <input type="range" id="lossRange" min="0" max="35" value="18">
+        </label>
+        <label>Shedding Threshold: <b id="thrVal">49.60 Hz</b>
+          <input type="range" id="thrRange" min="49.2" max="49.8" step="0.05" value="49.6">
+        </label>
+        <label>Grid Inertia H: <b id="hVal">5.0 s</b>
+          <input type="range" id="hRange" min="3" max="8" step="0.5" value="5">
+        </label>
+        <button id="runBenchmarkBtn">▶ Run 4-Mode Automated Benchmark</button>
+        <p id="benchmark-status" role="status"></p>
+      </div>
+
+      <div class="card">
+        <h2>SDG 11 Core Contribution</h2>
+        <p style="font-size: 12px; color: #cbd5e1; line-height: 1.6;">
+          <strong>Target 11.B:</strong> Resource efficiency and disaster resilience.<br>
+          Selective demand response tests whether reducing enrolled flexible loads can protect critical demand while the feeder is energized.
+        </p>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Simulated resilience comparison</h2>
+        <p style="font-size: 12px; color: #cbd5e1;">Green marks Rakshak improvements over Reference AUFLS. Red marks other modes that trail Rakshak on that metric. Unmanaged and bulk restart are experimental controls. Results apply to this simulated scenario.</p>
+      <table>
+          <thead>
+            <tr>
+              <th>Evaluation Metric</th>
+              <th>Unmanaged control</th>
+              <th>Reference AUFLS</th>
+              <th>AUFLS + Rakshak</th>
+              <th>AUFLS + Rakshak (bulk restart)</th>
+            </tr>
+          </thead>
+          <tbody id="benchmark-results"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Frequency Recovery Trajectory Comparison</h2>
+        <div class="chart-box">
+          <canvas id="freqChart" aria-label="Frequency versus simulated seconds"></canvas>
+          <div id="chart-legend"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const colors = ['#ef4444', '#60a5fa', '#22c55e', '#f97316'];
+    const modes = ['Unmanaged', 'Reference AUFLS', 'Staggered', 'Bulk restart'];
+    let lastResults = null;
+
+    function chart(results) {
+      const canvas = $('freqChart');
+      const width = canvas.clientWidth, height = 218;
+      const ratio = devicePixelRatio || 1;
+      canvas.width = width * ratio;
+      canvas.height = height * ratio;
+      canvas.style.height = height + 'px';
+      const c = canvas.getContext('2d');
+      c.scale(ratio, ratio);
+      const left = 49, right = width - 10, top = 10, bottom = height - 26;
+      const allHz = results.flatMap(result => result.trace.frequency);
+      const low = Math.floor(Math.min(49.5, ...allHz) * 2) / 2;
+      const high = Math.ceil(Math.max(50.5, ...allHz) * 2) / 2;
+      const duration = Math.max(...results[0].trace.time);
+      const x = time => left + time / duration * (right - left);
+      const y = f => bottom - (f - low) / (high - low) * (bottom - top);
+      c.font = '11px system-ui';
+      c.fillStyle = '#cbd5e1';
+      c.strokeStyle = '#334155';
+      c.lineWidth = 1;
+      for (let i = 0; i <= 5; i++) {
+        const f = low + (high - low) * i / 5;
+        c.beginPath(); c.moveTo(left, y(f)); c.lineTo(right, y(f)); c.stroke();
+        c.fillText(f.toFixed(2), 5, y(f) + 4);
+      }
+      for (let i = 0; i <= 3; i++) {
+        const time = duration * i / 3;
+        c.fillText(time.toFixed(0) + 's', Math.min(x(time), right - 25), height - 7);
+      }
+      results.forEach(({trace}, i) => {
+        c.strokeStyle = colors[i];
+        c.lineWidth = 2;
+        c.beginPath();
+        trace.frequency.forEach((f, index) => {
+          if (index === 0) c.moveTo(x(trace.time[index]), y(f));
+          else c.lineTo(x(trace.time[index]), y(f));
+        });
+        c.stroke();
+      });
+      $('chart-legend').replaceChildren(...modes.map((mode, i) => {
+        const item = document.createElement('span');
+        item.style.cssText = 'font-size: 11px; margin-right: 14px; color: ' + colors[i];
+        item.textContent = mode;
+        return item;
+      }));
+    }
+
+    $('runBenchmarkBtn').onclick = async () => {
+      $('runBenchmarkBtn').disabled = true;
+      $('benchmark-status').textContent = 'Running four simulations…';
+      try {
+        lastResults = await RakshakBenchmarks.run({
+          disturbance: $('disturbance').value, dynamic_demand: true,
+          generation_loss: +$('lossRange').value / 100,
+          participation: +$('participation').value / 100,
+          clinical_backup_minutes: +$('backup').value,
+          shed_threshold: +$('thrRange').value,
+          grid_inertia_h: +$('hRange').value,
+        });
+        RakshakBenchmarks.render($('benchmark-results'), lastResults);
+        chart(lastResults);
+        $('benchmark-status').textContent = 'Comparison complete.';
+      } catch {
+        $('benchmark-status').textContent = 'Benchmark unavailable. Open this page through the Rakshak server.';
+      } finally {
+        $('runBenchmarkBtn').disabled = false;
+      }
+    };
+
+    $('lossRange').oninput = e => $('lossVal').textContent = e.target.value + '%';
+    $('participation').oninput = e => $('participationVal').textContent = e.target.value + '%';
+    $('backup').oninput = e => $('backupVal').textContent = e.target.value + ' min';
+    $('thrRange').oninput = e => $('thrVal').textContent = Number(e.target.value).toFixed(2) + ' Hz';
+    $('hRange').oninput = e => $('hVal').textContent = Number(e.target.value).toFixed(1) + ' s';
+    window.addEventListener('resize', () => { if (lastResults) chart(lastResults); });
+  </script>
+</body>
+</html>

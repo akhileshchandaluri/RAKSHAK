@@ -1,0 +1,1100 @@
+{
+  "protocol": {
+    "duration_s": 270,
+    "step_s": 0.05,
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "inventory": {
+      "revision": 0,
+      "items": []
+    },
+    "interval": "paired Student t; 2.093 for planned 20 seeds; descriptive across modeled seeds, not field uncertainty"
+  },
+  "groups": [
+    {
+      "magnitude": 0.1,
+      "participation": 0,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 49.577,
+          "rakshak_mean": 49.577,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 0,
+          "rakshak_mean": 0,
+          "paired_mean_difference": 0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 22.22,
+          "paired_mean_difference": 22.22,
+          "paired_95_percent_t_interval": [
+            21.859967496036816,
+            22.58003250396318
+          ]
+        }
+      }
+    },
+    {
+      "magnitude": 0.1,
+      "participation": 0.25,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 49.577,
+          "rakshak_mean": 49.577,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 352.7188,
+          "paired_mean_difference": 352.7188,
+          "paired_95_percent_t_interval": [
+            314.9607007398141,
+            390.47689926018586
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 57.575,
+          "paired_mean_difference": 57.575,
+          "paired_95_percent_t_interval": [
+            44.08788500766697,
+            71.06211499233304
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 1.0002,
+          "paired_mean_difference": 1.0002,
+          "paired_95_percent_t_interval": [
+            0.9997813999999999,
+            1.0006186
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 0,
+          "rakshak_mean": 0,
+          "paired_mean_difference": 0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "magnitude": 0.1,
+      "participation": 0.5,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 49.577,
+          "rakshak_mean": 49.577,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 339.71455000000003,
+          "paired_mean_difference": 339.71455000000003,
+          "paired_95_percent_t_interval": [
+            332.61877676284456,
+            346.8103232371555
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 51.025,
+          "paired_mean_difference": 51.025,
+          "paired_95_percent_t_interval": [
+            50.84735438413649,
+            51.20264561586351
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 1.0,
+          "paired_mean_difference": 1.0,
+          "paired_95_percent_t_interval": [
+            1.0,
+            1.0
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 0,
+          "rakshak_mean": 0,
+          "paired_mean_difference": 0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "magnitude": 0.1,
+      "participation": 0.75,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 49.577,
+          "rakshak_mean": 49.577,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 335.6042,
+          "paired_mean_difference": 335.6042,
+          "paired_95_percent_t_interval": [
+            329.4839703273796,
+            341.7244296726204
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 51.125,
+          "paired_mean_difference": 51.125,
+          "paired_95_percent_t_interval": [
+            50.97554918572267,
+            51.27445081427733
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 1.0,
+          "paired_mean_difference": 1.0,
+          "paired_95_percent_t_interval": [
+            1.0,
+            1.0
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 0,
+          "rakshak_mean": 0,
+          "paired_mean_difference": 0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "magnitude": 0.1,
+      "participation": 1,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 49.577,
+          "rakshak_mean": 49.577,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 341.38475,
+          "paired_mean_difference": 341.38475,
+          "paired_95_percent_t_interval": [
+            335.0084673442726,
+            347.7610326557274
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 50.95,
+          "paired_mean_difference": 50.95,
+          "paired_95_percent_t_interval": [
+            50.8000678614032,
+            51.099932138596806
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 1.0,
+          "paired_mean_difference": 1.0,
+          "paired_95_percent_t_interval": [
+            1.0,
+            1.0
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 0,
+          "rakshak_mean": 0,
+          "paired_mean_difference": 0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "magnitude": 0.18,
+      "participation": 0,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 49.27865,
+          "rakshak_mean": 49.27865,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 5.2645,
+          "rakshak_mean": 5.2645,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 1613.066,
+          "rakshak_mean": 1613.066,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 117.1,
+          "rakshak_mean": 117.1,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 1.0141499999999999,
+          "rakshak_mean": 1.0141499999999999,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 20.9,
+          "rakshak_mean": 20.9,
+          "paired_mean_difference": 0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 170.5745,
+          "paired_mean_difference": 170.5745,
+          "paired_95_percent_t_interval": [
+            167.80885008578747,
+            173.34014991421253
+          ]
+        }
+      }
+    },
+    {
+      "magnitude": 0.18,
+      "participation": 0.25,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 49.27865,
+          "rakshak_mean": 49.57265,
+          "paired_mean_difference": 0.2940000000000012,
+          "paired_95_percent_t_interval": [
+            0.2909631564170408,
+            0.2970368435829616
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 5.2645,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": -5.2645,
+          "paired_95_percent_t_interval": [
+            -5.274278801381587,
+            -5.254721198618413
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 1613.066,
+          "rakshak_mean": 5419.08895,
+          "paired_mean_difference": 3806.02295,
+          "paired_95_percent_t_interval": [
+            3463.491220352295,
+            4148.554679647705
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 117.1,
+          "rakshak_mean": 181.6,
+          "paired_mean_difference": 64.5,
+          "paired_95_percent_t_interval": [
+            62.93484664237183,
+            66.06515335762818
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 1.0141499999999999,
+          "rakshak_mean": 1.0531,
+          "paired_mean_difference": 0.03895000000000004,
+          "paired_95_percent_t_interval": [
+            0.03598431193989182,
+            0.04191568806010826
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 20.9,
+          "rakshak_mean": 0,
+          "paired_mean_difference": -20.9,
+          "paired_95_percent_t_interval": [
+            -22.205312951183092,
+            -19.594687048816905
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 27.8045,
+          "paired_mean_difference": 27.8045,
+          "paired_95_percent_t_interval": [
+            19.245433345894597,
+            36.363566654105405
+          ]
+        }
+      }
+    },
+    {
+      "magnitude": 0.18,
+      "participation": 0.5,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 49.27865,
+          "rakshak_mean": 49.576,
+          "paired_mean_difference": 0.29735000000000084,
+          "paired_95_percent_t_interval": [
+            0.2952119079084452,
+            0.29948809209155647
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 5.2645,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": -5.2645,
+          "paired_95_percent_t_interval": [
+            -5.274278801381587,
+            -5.254721198618413
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 1613.066,
+          "rakshak_mean": 5076.7243,
+          "paired_mean_difference": 3463.6583,
+          "paired_95_percent_t_interval": [
+            3225.9353014397534,
+            3701.3812985602467
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 117.1,
+          "rakshak_mean": 180.0,
+          "paired_mean_difference": 62.9,
+          "paired_95_percent_t_interval": [
+            62.777580921464526,
+            63.02241907853547
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 1.0141499999999999,
+          "rakshak_mean": 1.04795,
+          "paired_mean_difference": 0.03380000000000005,
+          "paired_95_percent_t_interval": [
+            0.03062726139099794,
+            0.03697273860900216
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 20.9,
+          "rakshak_mean": 0,
+          "paired_mean_difference": -20.9,
+          "paired_95_percent_t_interval": [
+            -22.205312951183092,
+            -19.594687048816905
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "magnitude": 0.18,
+      "participation": 0.75,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 49.27865,
+          "rakshak_mean": 49.576,
+          "paired_mean_difference": 0.29735000000000084,
+          "paired_95_percent_t_interval": [
+            0.2952119079084452,
+            0.29948809209155647
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 5.2645,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": -5.2645,
+          "paired_95_percent_t_interval": [
+            -5.274278801381587,
+            -5.254721198618413
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 1613.066,
+          "rakshak_mean": 3461.57555,
+          "paired_mean_difference": 1848.50955,
+          "paired_95_percent_t_interval": [
+            1608.3983628873557,
+            2088.6207371126443
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 117.1,
+          "rakshak_mean": 180.0,
+          "paired_mean_difference": 62.9,
+          "paired_95_percent_t_interval": [
+            62.777580921464526,
+            63.02241907853547
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 1.0141499999999999,
+          "rakshak_mean": 1.0247,
+          "paired_mean_difference": 0.010550000000000026,
+          "paired_95_percent_t_interval": [
+            0.00711932429681927,
+            0.013980675703180782
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 20.9,
+          "rakshak_mean": 0,
+          "paired_mean_difference": -20.9,
+          "paired_95_percent_t_interval": [
+            -22.205312951183092,
+            -19.594687048816905
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "magnitude": 0.18,
+      "participation": 1,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 49.27865,
+          "rakshak_mean": 49.576,
+          "paired_mean_difference": 0.29735000000000084,
+          "paired_95_percent_t_interval": [
+            0.2952119079084452,
+            0.29948809209155647
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 5.2645,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": -5.2645,
+          "paired_95_percent_t_interval": [
+            -5.274278801381587,
+            -5.254721198618413
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 1613.066,
+          "rakshak_mean": 2108.18125,
+          "paired_mean_difference": 495.11524999999995,
+          "paired_95_percent_t_interval": [
+            345.98303086631256,
+            644.2474691336873
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 117.1,
+          "rakshak_mean": 109.25,
+          "paired_mean_difference": -7.85,
+          "paired_95_percent_t_interval": [
+            -35.55434314839604,
+            19.854343148396048
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 1.0141499999999999,
+          "rakshak_mean": 1.00365,
+          "paired_mean_difference": -0.010499999999999964,
+          "paired_95_percent_t_interval": [
+            -0.012849877304187733,
+            -0.008150122695812195
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 20.9,
+          "rakshak_mean": 0,
+          "paired_mean_difference": -20.9,
+          "paired_95_percent_t_interval": [
+            -22.205312951183092,
+            -19.594687048816905
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "magnitude": 0.35,
+      "participation": 0,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 48.79535,
+          "rakshak_mean": 48.79535,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 8.489,
+          "rakshak_mean": 8.489,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 7487.5336,
+          "rakshak_mean": 7487.5336,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 126.9,
+          "rakshak_mean": 126.9,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 1.02155,
+          "rakshak_mean": 1.02155,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 121.45,
+          "rakshak_mean": 121.45,
+          "paired_mean_difference": 0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 298.1215,
+          "paired_mean_difference": 298.1215,
+          "paired_95_percent_t_interval": [
+            293.195291252632,
+            303.04770874736806
+          ]
+        }
+      }
+    },
+    {
+      "magnitude": 0.35,
+      "participation": 0.25,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 48.79535,
+          "rakshak_mean": 49.1083,
+          "paired_mean_difference": 0.3129499999999997,
+          "paired_95_percent_t_interval": [
+            0.2934541057529809,
+            0.3324458942470184
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 8.489,
+          "rakshak_mean": 4.9925,
+          "paired_mean_difference": -3.4965,
+          "paired_95_percent_t_interval": [
+            -4.042543720057708,
+            -2.9504562799422924
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 7487.5336,
+          "rakshak_mean": 8398.5094,
+          "paired_mean_difference": 910.9758,
+          "paired_95_percent_t_interval": [
+            372.77238113949556,
+            1449.1792188605045
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 126.9,
+          "rakshak_mean": 180.0,
+          "paired_mean_difference": 53.1,
+          "paired_95_percent_t_interval": [
+            52.334739519406696,
+            53.86526048059331
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 1.02155,
+          "rakshak_mean": 1.0388,
+          "paired_mean_difference": 0.017250000000000033,
+          "paired_95_percent_t_interval": [
+            0.012230301028172828,
+            0.022269698971827238
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 121.45,
+          "rakshak_mean": 53.85,
+          "paired_mean_difference": -67.6,
+          "paired_95_percent_t_interval": [
+            -73.38875282295444,
+            -61.811247177045544
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 162.7065,
+          "paired_mean_difference": 162.7065,
+          "paired_95_percent_t_interval": [
+            154.1138338221783,
+            171.29916617782172
+          ]
+        }
+      }
+    },
+    {
+      "magnitude": 0.35,
+      "participation": 0.5,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 48.79535,
+          "rakshak_mean": 49.185050000000004,
+          "paired_mean_difference": 0.38970000000000304,
+          "paired_95_percent_t_interval": [
+            0.38166799364159026,
+            0.3977320063584158
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 8.489,
+          "rakshak_mean": 4.1305,
+          "paired_mean_difference": -4.3585,
+          "paired_95_percent_t_interval": [
+            -4.947955319331453,
+            -3.769044680668548
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 7487.5336,
+          "rakshak_mean": 12571.2328,
+          "paired_mean_difference": 5083.6992,
+          "paired_95_percent_t_interval": [
+            4652.917509511795,
+            5514.480890488205
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 126.9,
+          "rakshak_mean": 188.425,
+          "paired_mean_difference": 61.525,
+          "paired_95_percent_t_interval": [
+            59.59314763310777,
+            63.45685236689223
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 1.02155,
+          "rakshak_mean": 1.06405,
+          "paired_mean_difference": 0.04250000000000006,
+          "paired_95_percent_t_interval": [
+            0.036329338590641455,
+            0.04867066140935866
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 121.45,
+          "rakshak_mean": 41.75,
+          "paired_mean_difference": -79.7,
+          "paired_95_percent_t_interval": [
+            -88.25465954624177,
+            -71.14534045375824
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 28.014,
+          "paired_mean_difference": 28.014,
+          "paired_95_percent_t_interval": [
+            18.86586262516434,
+            37.16213737483566
+          ]
+        }
+      }
+    },
+    {
+      "magnitude": 0.35,
+      "participation": 0.75,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 48.79535,
+          "rakshak_mean": 49.185050000000004,
+          "paired_mean_difference": 0.38970000000000304,
+          "paired_95_percent_t_interval": [
+            0.38166799364159026,
+            0.3977320063584158
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 8.489,
+          "rakshak_mean": 4.6985,
+          "paired_mean_difference": -3.7904999999999998,
+          "paired_95_percent_t_interval": [
+            -4.368190101002657,
+            -3.2128098989973424
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 7487.5336,
+          "rakshak_mean": 11576.2852,
+          "paired_mean_difference": 4088.7515999999996,
+          "paired_95_percent_t_interval": [
+            3611.6052097671227,
+            4565.8979902328765
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 126.9,
+          "rakshak_mean": 188.775,
+          "paired_mean_difference": 61.875,
+          "paired_95_percent_t_interval": [
+            60.222298843808225,
+            63.527701156191775
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 1.02155,
+          "rakshak_mean": 1.0585,
+          "paired_mean_difference": 0.03695000000000008,
+          "paired_95_percent_t_interval": [
+            0.035032485161966505,
+            0.038867514838033655
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 121.45,
+          "rakshak_mean": 20.9,
+          "paired_mean_difference": -100.55,
+          "paired_95_percent_t_interval": [
+            -106.34686230975771,
+            -94.75313769024228
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "magnitude": 0.35,
+      "participation": 1,
+      "seeds": 20,
+      "delta_definition": "Rakshak minus reference AUFLS",
+      "metrics": {
+        "nadir": {
+          "reference_mean": 48.79535,
+          "rakshak_mean": 49.185050000000004,
+          "paired_mean_difference": 0.38970000000000304,
+          "paired_95_percent_t_interval": [
+            0.38166799364159026,
+            0.3977320063584158
+          ]
+        },
+        "critical_energy_not_served_wh": {
+          "reference_mean": 8.489,
+          "rakshak_mean": 5.1195,
+          "paired_mean_difference": -3.3695,
+          "paired_95_percent_t_interval": [
+            -3.91674409035701,
+            -2.82225590964299
+          ]
+        },
+        "total_unserved_wh": {
+          "reference_mean": 7487.5336,
+          "rakshak_mean": 9947.3999,
+          "paired_mean_difference": 2459.8663,
+          "paired_95_percent_t_interval": [
+            2062.870567219156,
+            2856.8620327808444
+          ]
+        },
+        "longest_device_pause_s": {
+          "reference_mean": 126.9,
+          "rakshak_mean": 182.15,
+          "paired_mean_difference": 55.25,
+          "paired_95_percent_t_interval": [
+            53.177062271005354,
+            57.322937728994646
+          ]
+        },
+        "peak_post_shed_load": {
+          "reference_mean": 1.02155,
+          "rakshak_mean": 1.05915,
+          "paired_mean_difference": 0.037600000000000064,
+          "paired_95_percent_t_interval": [
+            0.03492051252092382,
+            0.04027948747907631
+          ]
+        },
+        "feeder_trips": {
+          "reference_mean": 121.45,
+          "rakshak_mean": 20.9,
+          "paired_mean_difference": -100.55,
+          "paired_95_percent_t_interval": [
+            -106.34686230975771,
+            -94.75313769024228
+          ]
+        },
+        "relief_shortfall_kw": {
+          "reference_mean": 0.0,
+          "rakshak_mean": 0.0,
+          "paired_mean_difference": 0.0,
+          "paired_95_percent_t_interval": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    }
+  ]
+}
