@@ -177,7 +177,9 @@ class BuildingAgent:
 
 
 class FleetSimulator:
-    def __init__(self, config=None, participation=1.0, seed=42, size=500, clinical_backup_minutes=0, inventory=None):
+    def __init__(self, config=None, participation=1.0, seed=42, size=500, clinical_backup_minutes=0, inventory=None,
+                 campus=False, campus_ac_share=0.30):
+        self.campus_enabled, self.campus_ac_share = campus, campus_ac_share
         self.cfg = config or GridConfig()
         self.participation, self.seed, self.size = participation, seed, size
         self.clinical_backup_minutes = clinical_backup_minutes
@@ -245,6 +247,10 @@ class FleetSimulator:
                 i, kind, i % 4, kind == "clinic" or i % 100 == 1,
                 weights[kind], self.seed, self.participation,
             ))
+        self.campus_buildings = []
+        if getattr(self, "campus_enabled", False):
+            from campus import add_campus
+            self.campus_buildings = add_campus(self, BuildingAgent, SimulatedDevice, self.campus_ac_share)
         for item in self.inventory["items"]:
             if item["building_id"] >= len(self.macro_fleet):
                 continue
@@ -265,7 +271,7 @@ class FleetSimulator:
         self.baseline_macro_w = sum(b.get_total_power_w(0.0) for b in self.macro_fleet)
         self.ufls_feeder_tripped = [False] * 4
         self.stage_blocks = []
-        remaining = [b for b in self.macro_fleet if b.b_type not in {"clinic", "cold_chain", "water_service"}]
+        remaining = [b for b in self.macro_fleet if b.b_type not in {"clinic", "cold_chain", "water_service", "campus"}]
         for fraction in self.cfg.ufls_relief:
             group, watts = [], 0.0
             while remaining and watts < fraction * self.baseline_macro_w:

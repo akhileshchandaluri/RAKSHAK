@@ -1,1422 +1,180 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Project Rakshak - Smart Grid Resilience Command Center</title>
-  <style>
-    :root {
-      --bg-dark: #070b14;
-      --panel-bg: rgba(13, 20, 38, 0.88);
-      --panel-border: #1e293b;
-      --accent-cyan: #38bdf8;
-      --accent-blue: #2563eb;
-      --accent-green: #22c55e;
-      --accent-orange: #f97316;
-      --accent-red: #ef4444;
-      --accent-purple: #a855f7;
-      --text-main: #f8fafc;
-      --text-dim: #94a3b8;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: var(--bg-dark);
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      color: var(--text-main);
-    }
-
-    /* ================= TOP COMMAND BAR ================= */
-    #top-bar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 58px;
-      background: rgba(7, 12, 24, 0.94);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--panel-border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 16px;
-      z-index: 100;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
-    }
-
-    .brand-section {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .brand-title {
-      font-size: 16px;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .brand-subtitle {
-      font-size: 10px;
-      color: var(--text-dim);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-    }
-
-    /* Central Frequency Heartbeat */
-    .frequency-card {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      background: #0f172a;
-      border: 1px solid #334155;
-      padding: 4px 16px;
-      border-radius: 28px;
-      box-shadow: 0 0 16px rgba(56, 189, 248, 0.15);
-    }
-
-    #hz-display {
-      font-family: 'Consolas', 'Courier New', monospace;
-      font-size: 26px;
-      font-weight: 800;
-      color: var(--accent-green);
-      letter-spacing: -0.5px;
-      transition: color 0.3s;
-    }
-
-    .freq-meta {
-      display: flex;
-      flex-direction: column;
-      font-size: 10px;
-      font-family: monospace;
-    }
-
-    #rocof-pill {
-      font-weight: 700;
-      color: var(--accent-cyan);
-    }
-
-    .clock-pill {
-      color: var(--text-dim);
-    }
-
-    /* Mode Pill Switcher */
-    .scenario-selector {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .mode-tab {
-      background: #1e293b;
-      color: #94a3b8;
-      border: 1px solid #334155;
-      padding: 5px 10px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .mode-tab:hover {
-      background: #334155;
-      color: #fff;
-    }
-
-    .mode-tab.active {
-      background: var(--accent-blue);
-      border-color: #60a5fa;
-      color: #fff;
-      box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
-    }
-
-    /* Quick Action Triggers */
-    .action-triggers {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-action {
-      background: #1e293b;
-      border: 1px solid #334155;
-      color: #e2e8f0;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      transition: all 0.2s;
-    }
-
-    .btn-action:hover {
-      background: #334155;
-      transform: translateY(-1px);
-    }
-
-    .btn-danger {
-      background: #7f1d1d;
-      border-color: #ef4444;
-      color: #fecaca;
-    }
-
-    .btn-danger:hover {
-      background: #991b1b;
-    }
-
-    .btn-benchmark {
-      background: linear-gradient(135deg, #0284c7 0%, #4f46e5 100%);
-      border: 0;
-      color: #fff;
-      font-weight: 700;
-    }
-
-    /* Status Badges */
-    .status-badge {
-      font-size: 10px;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .badge-live {
-      background: rgba(34, 197, 94, 0.15);
-      border: 1px solid #22c55e;
-      color: #4ade80;
-    }
-
-    .badge-hil {
-      background: rgba(14, 165, 233, 0.15);
-      border: 1px solid #0ea5e9;
-      color: #38bdf8;
-    }
-
-    /* ================= FLOATING GLASS PANELS ================= */
-    .glass-panel {
-      position: fixed;
-      background: var(--panel-bg);
-      border: 1px solid var(--panel-border);
-      backdrop-filter: blur(14px);
-      border-radius: 12px;
-      padding: 12px 14px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-      z-index: 50;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .panel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #1e293b;
-      padding-bottom: 8px;
-      margin-bottom: 10px;
-    }
-
-    .panel-title {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: var(--accent-cyan);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    /* LEFT CONTROLS DOCK */
-    #left-dock {
-      top: calc(var(--top-bar-height, 58px) + 10px);
-      left: 14px;
-      width: 280px;
-      max-height: calc(100dvh - var(--top-bar-height, 58px) - 26px);
-      overflow-y: auto;
-    }
-
-    #left-dock::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    #left-dock::-webkit-scrollbar-thumb {
-      background: #334155;
-      border-radius: 4px;
-    }
-
-    .param-group {
-      margin-bottom: 10px;
-    }
-
-    .param-group label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-      color: var(--text-dim);
-      margin-bottom: 4px;
-    }
-
-    .param-group label span.val {
-      font-family: monospace;
-      font-weight: 700;
-      color: #f1f5f9;
-    }
-
-    input[type=range] {
-      width: 100%;
-      height: 4px;
-      background: #1e293b;
-      border-radius: 2px;
-      outline: none;
-      accent-color: var(--accent-cyan);
-    }
-
-    .camera-btns {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      margin-top: 12px;
-    }
-
-    /* RIGHT TELEMETRY & NILM INSPECTOR DOCK */
-    #right-dock {
-      top: calc(var(--top-bar-height, 58px) + 10px);
-      right: 14px;
-      width: 320px;
-      max-height: calc(100dvh - var(--top-bar-height, 58px) - 26px);
-      overflow-y: auto;
-    }
-
-    #right-dock::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    #right-dock::-webkit-scrollbar-thumb {
-      background: #334155;
-      border-radius: 4px;
-    }
-
-    .building-summary-card {
-      background: #0f172a;
-      border: 1px solid #1e293b;
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 12px;
-    }
-
-    .b-name {
-      font-size: 14px;
-      font-weight: 700;
-      color: #f8fafc;
-    }
-
-    .b-meta {
-      font-size: 11px;
-      color: var(--text-dim);
-      font-family: monospace;
-      margin-top: 2px;
-    }
-
-    /* Device Load List */
-    .device-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px 0;
-      border-bottom: 1px solid rgba(30, 41, 59, 0.7);
-      font-size: 11px;
-    }
-
-    .dev-name {
-      font-weight: 600;
-    }
-
-    .dev-tier-chip {
-      font-size: 9px;
-      font-weight: 700;
-      padding: 1px 6px;
-      border-radius: 10px;
-      margin-left: 6px;
-      text-transform: uppercase;
-    }
-
-    .tier-critical { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid #22c55e; }
-    .tier-essential { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6; }
-    .tier-deferrable { background: rgba(249, 115, 22, 0.2); color: #fb923c; border: 1px solid #f97316; }
-
-    .dev-status {
-      font-family: monospace;
-      font-weight: 700;
-    }
-
-    .status-running { color: #4ade80; }
-    .status-shed { color: #fb923c; }
-    .status-lockout { color: #c084fc; animation: pulse-lockout 1.5s infinite; }
-    .status-dead { color: #ef4444; }
-
-    @keyframes pulse-lockout {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
-    /* BOTTOM ANALYTICS STRIP */
-    #bottom-analytics {
-      position: fixed;
-      bottom: 12px;
-      left: 304px;
-      right: 344px;
-      height: 120px;
-      display: flex;
-      gap: 12px;
-      z-index: 50;
-    }
-
-    .chart-panel {
-      flex: 1;
-      background: var(--panel-bg);
-      border: 1px solid var(--panel-border);
-      backdrop-filter: blur(14px);
-      border-radius: 12px;
-      padding: 8px 12px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .chart-title {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--text-dim);
-      margin-bottom: 4px;
-      display: flex;
-      justify-content: space-between;
-    }
-
-    canvas.mini-chart {
-      width: 100% !important;
-      height: 80px !important;
-      display: block;
-    }
-
-    /* ================= BENCHMARK MODAL ================= */
-    #benchmark-modal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(4, 8, 16, 0.85);
-      backdrop-filter: blur(16px);
-      z-index: 200;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-
-    .modal-card {
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 16px;
-      width: 900px;
-      max-width: 95vw;
-      max-height: 90vh;
-      overflow-y: auto;
-      padding: 24px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
-    }
-
-    .modal-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #1e293b;
-      padding-bottom: 12px;
-      margin-bottom: 16px;
-    }
-
-    .benchmark-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-      margin-top: 14px;
-    }
-
-    .benchmark-table th, .benchmark-table td {
-      padding: 8px 12px;
-      border: 1px solid #1e293b;
-      text-align: left;
-    }
-
-    .benchmark-table th {
-      background: #1e293b;
-      color: #94a3b8;
-    }
-
-    .compact-controls { display: none; }
-
-    @media (max-width: 1320px) {
-      #top-bar { height: auto; min-height: 58px; padding-block: 8px; flex-wrap: wrap; gap: 8px; }
-      .scenario-selector, .action-triggers { flex-wrap: wrap; }
-    }
-
-    @media (max-width: 900px) {
-      .compact-controls { display: flex; gap: 6px; }
-      #top-bar { padding-inline: 8px; }
-      #left-dock, #right-dock { display: none; width: min(320px, calc(100% - 28px)); z-index: 60; }
-      #left-dock[data-open="true"], #right-dock[data-open="true"] { display: block; }
-      #bottom-analytics { left: 8px; right: 8px; bottom: 8px; gap: 6px; height: 103px; }
-      .chart-panel { min-width: 0; padding: 6px; }
-      .chart-title { flex-wrap: wrap; gap: 2px; }
-      canvas.mini-chart { height: 60px !important; }
-      .modal-card { padding: 12px; }
-      .benchmark-table th, .benchmark-table td { padding: 5px; font-size: 10px; }
-    }
-
-    /* 3D Label Markers */
-    #labels {
-      position: fixed;
-      inset: 0;
-      z-index: 1;
-      pointer-events: none;
-      overflow: hidden;
-    }
-
-    .lbl {
-      position: absolute;
-      transform: translate(-50%, -50%);
-      padding: 2px 7px;
-      border-radius: 10px;
-      font-size: 10px;
-      font-weight: 800;
-      background: rgba(2, 6, 23, 0.88);
-      border: 1.5px solid;
-      pointer-events: none;
-      transition: all 0.2s;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rakshak Campus Twin</title>
+  <meta name="description" content="Simulation-based digital twin of the RVCE campus and its grid area: nadir-predictive appliance dispatch beneath AUFLS.">
+  <link rel="stylesheet" href="app/twin.css">
 </head>
-
 <body>
-  <!-- ================= TOP COMMAND BAR ================= -->
-  <header id="top-bar">
-    <div class="brand-section">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
       <div>
-        <div class="brand-title">⚡ PROJECT RAKSHAK</div>
-        <div class="brand-subtitle">Autonomous Grid Resilience · SDG 11</div>
-      </div>
-      <span class="status-badge badge-live" id="badge-conn">Waiting for simulation server</span>
-      <span class="status-badge badge-hil" id="badge-hil" hidden></span>
-    </div>
-
-    <!-- Frequency Heartbeat Gauge -->
-    <div class="frequency-card">
-      <div id="hz-display">50.00 Hz</div>
-      <div class="freq-meta">
-        <span id="rocof-pill">RoCoF: 0.00 Hz/s</span>
-        <span class="clock-pill" id="sim-clock">t = 0.0 s</span>
+        <div class="brand-name">Rakshak</div>
+        <div class="brand-sub">RVCE campus twin · simulation</div>
       </div>
     </div>
-
-    <!-- Scenario Switcher Pills -->
-    <div class="scenario-selector">
-      <button class="mode-tab" data-mode="none">1. Unmanaged</button>
-      <button class="mode-tab" data-mode="ufls">2. Reference AUFLS</button>
-      <button class="mode-tab active" data-mode="smart">3. AUFLS + Rakshak</button>
-      <button class="mode-tab" data-mode="smartns">4. AUFLS + bulk restart</button>
-    </div>
-
-    <!-- Quick Action Triggers -->
-    <div class="action-triggers">
-      <button class="btn-action" id="btn-restart">⟲ Reset</button>
-      <button class="btn-action" id="btn-play">⏸ Pause</button>
-      <button class="btn-action btn-benchmark" id="btn-open-benchmark">📊 Compare All Modes</button>
-    </div>
-    <div class="compact-controls">
-      <button class="btn-action" id="toggle-controls" aria-controls="left-dock" aria-expanded="false">Grid settings</button>
-      <button class="btn-action" id="toggle-inspector" aria-controls="right-dock" aria-expanded="false">Load inspector</button>
+    <nav class="tabs" role="tablist" aria-label="Views">
+      <button role="tab" aria-selected="true" data-view="twin">Campus twin</button>
+      <button role="tab" aria-selected="false" data-view="grid">Grid console</button>
+      <button role="tab" aria-selected="false" data-view="lab">Experiment lab</button>
+      <button role="tab" aria-selected="false" data-view="methods">Methods</button>
+    </nav>
+    <div class="readouts">
+      <div class="readout freq" title="Area frequency">
+        <span class="label">Frequency</span>
+        <span class="value" id="ro-freq">—</span>
+      </div>
+      <div class="readout" title="Rate of change of frequency over 0.2 s">
+        <span class="label">RoCoF</span>
+        <span class="value" id="ro-rocof">—</span>
+      </div>
+      <div class="readout" title="Simulated time">
+        <span class="label">Time</span>
+        <span class="value" id="ro-time">—</span>
+      </div>
+      <span class="status" id="conn" data-state="waiting">Connecting</span>
     </div>
   </header>
 
-  <!-- ================= LEFT CONTROLS DOCK ================= -->
-  <div class="glass-panel" id="left-dock">
-    <div class="panel-header">
-      <div class="panel-title">⚙ Grid Physics & Protection</div>
-    </div>
-
-    <div class="param-group"><label for="preset">Showcase scenario</label><select id="preset" class="btn-action">
-      <option value="generation_loss">Generation loss</option><option value="normal">Normal operation</option>
-      <option value="demand_surge">Demand surge</option><option value="severe">Severe shortage / low enrollment</option>
-      <option value="stress">Severe shortage / full enrollment</option>
-      <option value="feeder_fault">Local feeder fault</option><option value="backup_exhaustion">Backup exhaustion</option>
-      <option value="restoration">Coordinated restoration</option><option value="solar_surplus">Solar surplus</option></select></div>
-      <p style="font-size:11px;color:#94a3b8">50 Hz reference · normal band 49.90–50.05 Hz.<br>AUFLS: 49.4 / 49.2 / 49.0 / 48.8 Hz.<br><a href="evidence.html" style="color:#38bdf8">Model, sources and Indian grid context ↗</a></p>
-      <details><summary>Advanced experiment settings</summary>
-    <div class="param-group">
-      <label for="disturbance">Disturbance</label>
-      <select id="disturbance" class="btn-action">
-        <option value="generation_loss">Generation loss</option>
-        <option value="demand_surge">Demand surge</option>
-        <option value="solar_surplus">Solar surplus</option><option value="feeder_fault">Local feeder fault</option>
-      </select>
-    </div>
-
-    <div class="param-group">
-      <label for="participation">Enrollment: <span class="val" id="participationV">100%</span></label>
-      <input type="range" id="participation" min="0" max="100" value="100">
-    </div>
-
-    <div class="param-group">
-      <label for="backup">Protected-facility backup <span class="val" id="backupV">2 min</span></label>
-      <input type="range" id="backup" min="0" max="10" step="0.25" value="2">
-    </div>
-    <div class="param-group">
-      <label for="loss">Disturbance Magnitude: <span class="val" id="lossV">18%</span></label>
-      <input type="range" id="loss" min="0" max="35" value="18">
-    </div>
-
-    <div class="param-group">
-      <label for="thr">Experimental DR trigger: <span class="val" id="thrV">49.60 Hz</span></label>
-      <input type="range" id="thr" min="49.2" max="49.9" step="0.05" value="49.6">
-    </div>
-
-    <div class="param-group">
-      <label for="trec">Return ramp starts <span class="val" id="trecV">45 s</span></label>
-      <input type="range" id="trec" min="20" max="90" value="45">
-    </div>
-
-    <div class="param-group">
-      <label for="H">Grid Inertia Constant (H): <span class="val" id="HV">5.0 s</span></label>
-      <input type="range" id="H" min="3" max="8" step="0.5" value="5">
-    </div>
-
-    <div class="param-group">
-      <label for="speed">Simulation Playback Speed: <span class="val" id="speedV">3x</span></label>
-      <input type="range" id="speed" min="1" max="10" value="3">
-    </div>
-
-    </details>
-    <div class="panel-header" style="margin-top: 14px;">
-      <div class="panel-title">🎥 3D Camera Angles</div>
-    </div>
-    <div class="camera-btns">
-      <button class="btn-action" id="btn-street-view">🏙 Street View</button>
-      <button class="btn-action" id="btn-look-inside">🔍 Focus Building</button>
-    </div>
-
-    <div class="panel-header" style="margin-top: 14px;">
-      <div class="panel-title">📋 Recent decisions</div>
-    </div>
-    <div id="sim-log-box" style="font-family: monospace; font-size: 10px; color: #94a3b8; max-height: 90px; overflow-y: auto;">
-      Ready. Disturbance starts at t = 5.0 s.
-    </div>
-  </div>
-
-  <!-- ================= RIGHT DOCK: BUILDING & NILM INSPECTOR ================= -->
-  <div class="glass-panel" id="right-dock">
-    <div class="panel-header">
-      <div class="panel-title">🔍 Building & Load Inspector</div>
-      <span class="status-badge" style="background:#1e293b; color:#94a3b8;" id="selected-feeder-pill">FEEDER 1</span>
-    </div>
-
-    <div class="building-summary-card">
-        <div class="b-name" id="b-title">House #2</div>
-      <div class="b-meta" id="b-mac">Simulated appliance telemetry</div>
-      <select id="building-choice" class="btn-action" aria-label="Select a building"></select>
-    </div>
-
-    <p><a id="request-appliance" href="appliances.html" style="color:#38bdf8">Add appliance / request priority review ↗</a></p>
-    <div style="font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase;">
-      Simulated Appliance States
-    </div>
-    <p id="mode-behavior" style="font-size:11px;color:#94a3b8"></p>
-    <div id="device-list-container">
-      <!-- Generated via JS -->
-    </div>
-
-    <div id="nilm-result" style="font-size: 11px; color: #94a3b8; margin: 8px 0;"></div>
-
-    <section id="continuity-box" hidden style="font-size:12px;padding:12px;border:1px solid #38bdf8;border-radius:8px">
-      <b>Critical electrical service continuity</b><p id="continuity-values"></p>
-      <canvas id="continuity-chart" width="280" height="65" aria-label="Requested and supplied critical electrical watts"></canvas>
-      <small>Requested (blue) · supplied (green). Electrical simulation, not patient measurements.</small>
-    </section>
-    <p id="water-values" style="font-size:12px"></p>
-    <small id="inventory-revision"></small>
-
-    <div class="panel-header" style="margin-top: 14px;">
-      <div class="panel-title">📊 Feeder Resilience Scorecard</div>
-    </div>
-    <div id="scorecard-container" style="font-size: 11px;">
-      <!-- Populated via HUD -->
-    </div>
-  </div>
-
-  <!-- ================= BOTTOM ANALYTICS STRIP ================= -->
-  <div id="bottom-analytics">
-    <div class="chart-panel">
-      <div class="chart-title">
-        <span>Grid Synchronous Frequency</span>
-        <span id="chart-nadir-val" style="color: #38bdf8;">Nadir: 50.00 Hz</span>
-      </div>
-      <canvas class="mini-chart" id="chart-freq"></canvas>
-    </div>
-
-    <div class="chart-panel">
-      <div class="chart-title">
-        <span>Distribution Feeder Active Demand (p.u.)</span>
-        <span id="chart-peak-val" style="color: #f97316;">Peak after reconnection —</span>
-      </div>
-      <canvas class="mini-chart" id="chart-load"></canvas>
-    </div>
-  </div>
-
-  <!-- ================= BENCHMARK COMPARISON MODAL ================= -->
-  <div id="benchmark-modal" role="dialog" aria-modal="true" aria-labelledby="benchmark-title">
-    <div class="modal-card">
-      <div class="modal-head">
-        <div>
-          <h2 id="benchmark-title" style="font-size: 18px; color: #38bdf8;">Simulated resilience comparison</h2>
-          <p style="font-size: 11px; color: #94a3b8;">Identical scenario and enrollment across all four modes</p>
+  <main class="layout">
+    <!-- Scenario rail -->
+    <aside class="rail" id="rail" aria-label="Scenario">
+      <section class="group">
+        <h2>Scenario</h2>
+        <label class="field">Preset
+          <select id="preset">
+            <option value="calibrated">Calibrated India event (5 %, H 3 s)</option>
+            <option value="small">Small contingency (2 %)</option>
+            <option value="low_inertia">Low inertia (H 2 s, 5 %)</option>
+            <option value="textbook">Textbook governor (18 %, H 5 s)</option>
+            <option value="comms">Degraded communication (1 s, 40 % loss)</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+        <label class="field">Control policy
+          <select id="mode">
+            <option value="hybrid">Hybrid: pre-armed + NP-MRD</option>
+            <option value="np_mrd">NP-MRD (central)</option>
+            <option value="edge">Edge relays only</option>
+            <option value="rakshak">Original heuristic</option>
+            <option value="ufls">AUFLS only (reference)</option>
+            <option value="none">No protection (control)</option>
+          </select>
+        </label>
+        <div class="buttons">
+          <button class="btn primary" id="btn-apply">Run scenario</button>
+          <button class="btn" id="btn-play" aria-pressed="true">Pause</button>
         </div>
-        <button class="btn-action" id="btn-close-modal">✕ Close</button>
-      </div>
+        <label class="field range">Speed <output id="o-speed"></output>
+          <input type="range" id="speed" min="1" max="10" step="1" value="4">
+        </label>
+      </section>
+      <section class="group">
+        <h2>Grid</h2>
+        <label class="field range">Generation loss <output id="o-loss"></output>
+          <input type="range" id="loss" min="0" max="20" step="0.5" value="5">
+        </label>
+        <label class="field range">Inertia H <output id="o-H"></output>
+          <input type="range" id="H" min="1.5" max="8" step="0.5" value="3">
+        </label>
+        <label class="field">Governor response
+          <select id="km">
+            <option value="0.15">Calibrated to Indian events (K<sub>m</sub> 0.15)</option>
+            <option value="0.95">Textbook reheat unit (K<sub>m</sub> 0.95)</option>
+          </select>
+        </label>
+        <label class="field range">Participation <output id="o-part"></output>
+          <input type="range" id="part" min="0" max="100" step="5" value="100">
+        </label>
+      </section>
+      <section class="group">
+        <h2>Communication</h2>
+        <label class="field range">Latency <output id="o-lat"></output>
+          <input type="range" id="lat" min="0" max="2" step="0.25" value="0">
+        </label>
+        <label class="field range">Packet loss <output id="o-pl"></output>
+          <input type="range" id="pl" min="0" max="60" step="5" value="0">
+        </label>
+      </section>
+      <p class="fine">Every value is a model input. Sources and assumptions are listed under Methods.</p>
+    </aside>
 
-      <p style="font-size: 12px; color: #cbd5e1;">Green marks Rakshak improvements over Reference AUFLS. Red marks other modes that trail Rakshak on that metric. Unmanaged and bulk restart are experimental controls. Results apply to this simulated scenario.</p>
-      <table class="benchmark-table">
-        <thead>
-          <tr>
-            <th>Resilience Metric</th>
-            <th>Unmanaged control</th>
-            <th>Reference AUFLS</th>
-            <th>AUFLS + Rakshak</th>
-            <th>AUFLS + Rakshak (bulk restart)</th>
-          </tr>
-        </thead>
-        <tbody id="benchmark-results"></tbody>
-      </table>
-      <p id="benchmark-status" role="status" style="margin-top: 12px;"></p>
-      <a href="dashboard.html" style="color: #38bdf8;">Open analytics dashboard</a>
-    </div>
-  </div>
-
-  <div id="labels"></div>
-
-  <!-- Three.js (Local with CDN fallback) -->
-  <script src="three.min.js"></script>
-  <script src="benchmarks.js"></script>
-  <script src="appliance-catalog.js"></script>
-  <script src="showcase.js"></script>
-  <script>
-    if (typeof THREE === 'undefined') {
-      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
-    }
-  </script>
-
-  <!-- Simulation view -->
-  <script>
-    const $ = id => document.getElementById(id);
-    const V3 = THREE.Vector3;
-    const TEND = 270, DT = 0.05, N = 12, T0 = 5, REC = 5;
-
-    /* ================= WEBSOCKET BACKEND BRIDGE ================= */
-    let ws = null, wsConnected = false, revision = 0;
-    const serverModes = { none: 'none', ufls: 'ufls', smart: 'rakshak', smartns: 'rakshak_unstaggered' };
-
-    function scenario() {
-      return {
-        mode: serverModes[mode], disturbance: $('disturbance').value, dynamic_demand: true,
-        generation_loss: +$('loss').value / 100, t_recover: +$('trec').value,
-        shed_threshold: +$('thr').value, grid_inertia_h: +$('H').value,
-        participation: +$('participation').value / 100, clinical_backup_minutes: +$('backup').value,
-      };
-    }
-
-    function sendControl(message) {
-      if (wsConnected && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
-    }
-
-    function connect() {
-      if (!['http:', 'https:'].includes(location.protocol)) return;
-      const url = new URL('ws/telemetry', location.href);
-      url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      ws = new WebSocket(url);
-      ws.onopen = () => {
-        wsConnected = true;
-        $('badge-conn').textContent = 'Connecting…';
-        reset();
-      };
-      ws.onmessage = ({data}) => {
-        const frame = JSON.parse(data);
-        if (frame.error) $('sim-log-box').textContent = frame.error;
-        if (frame.revision !== revision) return;
-        $('badge-conn').textContent = '● LIVE SIMULATION';
-        applyFrame(frame);
-      };
-      ws.onclose = () => {
-        const wasLive = wsConnected;
-        wsConnected = false;
-        $('badge-conn').textContent = 'DISCONNECTED · telemetry frozen';
-        setTimeout(connect, 2500);
-      };
-    }
-
-    function applyFrame(frame) {
-      S.t = frame.time;
-      S.f = frame.frequency;
-      S.rocof = frame.rocof;
-      S.pl = frame.load_pu;
-      S.collapsed = frame.collapsed;
-      S.live = frame;
-      S.complete = frame.complete;
-      const clock = $('sim-clock');
-      clock.textContent = 't = ' + frame.time.toFixed(1) + ' s';
-      clock.dataset.playing = String(frame.playing);
-      const hardware = $('badge-hil');
-      hardware.hidden = frame.hil.state === 'SIMULATED';
-      hardware.textContent = frame.hil.connected
-        ? (frame.hil.input_fresh === false ? 'ESP32 input stale' : 'ESP32 telemetry')
-        : frame.hil.state.replaceAll('_', ' ').toLowerCase();
-      $('speed').disabled = frame.hil.attached;
-      $('speedV').textContent = frame.hil.attached ? '1x' : speed + 'x';
-      if (frame.complete) {
-        playing = false;
-        $('btn-play').textContent = '▶ Play';
-      }
-      const m = frame.metrics;
-      S.M = { nadir: m.nadir, recT: m.recovery_time, rocof: m.max_rocof,
-        medMin: m.medical_minutes_lost, critWh: m.critical_energy_not_served_wh,
-        peak: m.peak_post_shed_load };
-      for (const snapshot of frame.buildings) {
-        const b = S.B[snapshot.i];
-        b.snapshot = snapshot;
-        b.med = snapshot.is_med;
-        b.feeder = snapshot.feeder;
-        b.mac = snapshot.mac;
-        for (const [key, appliance] of Object.entries(snapshot.appliances)) {
-          if (!b.devs.some(d => d.key === key)) b.devs.push({key, spec: {}, own:true});
-        }
-        b.energized = snapshot.energized;
-        b.enrolled = snapshot.enrolled;
-        b.p = snapshot.power_w;
-        for (const d of b.devs) {
-          const appliance = snapshot.appliances[d.key];
-          d.own = Boolean(appliance);
-          d.want = Boolean(appliance?.requested);
-          d.on = Boolean(appliance?.on);
-          d.lockoutRemaining = appliance?.lockout_s || 0;
-          d.waiting = Boolean(appliance?.waiting);
-          d.w = appliance?.rated_w || 0;
-          d.livePower = appliance?.power_w || 0;
-          d.quantity = appliance?.quantity || 0;
-          d.supply = appliance?.supply;
-          d.eligible = appliance?.eligible;
-          if(appliance) { d.tier = appliance.tier; d.name = appliance.name; d.spec = appliance; d.reason = appliance.reason; }
-        }
-      }
-      if (S.ht.length === 0 || S.t >= S.ht[S.ht.length - 1] + 0.24) {
-        S.ht.push(S.t);
-        S.hf.push(S.f);
-        S.hd.push(S.pl);
-      }
-      const lines = frame.events.slice(-5).reverse().map(({time, reason, target_w, eligible_w, delivered_w, excluded_devices}) => {
-        const line = document.createElement('div');
-        line.textContent = 't=' + time.toFixed(1) + 's  ' + reason + (target_w === undefined ? '' : ' · target '+Math.round(target_w)+' W / eligible '+Math.round(eligible_w)+' W / delivered '+Math.round(delivered_w)+' W · '+excluded_devices+' excluded');
-        return line;
-      });
-      if (lines.length) $('sim-log-box').replaceChildren(...lines);
-    }
-
-    /* ================= DEVICE CATALOG WITH COMPRESSOR LOCKOUT ================= */
-    const DEV = Object.entries(APPLIANCE_CATALOG).map(([key, spec]) => ({key, ...spec}));
-    const byKey = (building, key) => building.devs.find(device => device.key === key) || {own:false,on:false};
-    const TIERN = ['CRITICAL', 'ESSENTIAL', 'FLEXIBLE', 'ORDINARY'];
-    const TNAME = { house: 'House', clinic: 'Medical Clinic', shop: 'Retail Shop', apartment: 'Apartment Complex', cold_chain: 'Cold-chain Facility', water_service: 'Water Service' };
-    const TYPES = ['house', 'house', 'clinic', 'house', 'shop', 'house', 'house', 'apartment', 'cold_chain', 'water_service', 'house', 'house'];
-    const HGT = { house: 5, clinic: 6, shop: 5, apartment: 11, cold_chain: 5, water_service: 5 };
-    const COLS = { house: [0x8a6f5a, 0x6f8a7a, 0x7a6f8a, 0x8a7f5a], clinic: 0xb9c4cc, shop: 0x7d5a48, apartment: 0x5b6b80, cold_chain: 0x528e98, water_service: 0x456aaf };
-    // Geometry placeholders only. Installed devices and every electrical state come from the backend.
-    function buildCity() {
-      return TYPES.map((type,i) => ({
-        i, type, side:i<6?-1:1, x:-30+12*(i%6), z:(i<6?-1:1)*9.5, h:HGT[type],
-        feeder:Math.floor(i/3), med:type==='clinic'||type==='cold_chain'||i===1,
-        enrolled:false, energized:false, p:0, mac:'Awaiting backend inventory',
-        devs:DEV.map(d=>({key:d.key,name:d.name,spec:d,tier:d.tier,w:0,quantity:0,own:false,want:false,on:false}))
-      }));
-    }
-    const CITY0 = buildCity();
-
-    let S, P, mode = 'smart', sel = 1, playing = true, speed = 3, acc = 0;
-    function reset() {
-      P = { loss: +$('loss').value / 100, thr: +$('thr').value, tRec: +$('trec').value, H: +$('H').value, disturbance: $('disturbance').value, ramp: 30, D: 1, head: 0.15, spread: 40 };
-      const B = buildCity(); let base = 0; for (const b of B) for (const d of b.devs) if (d.want) base += d.w;
-      S = {
-        t: 0, x: 0, pg: 0, collapsed: false, B, fh: [], hf: [], hd: [], ht: [], base, tShed: null, fired: [0, 0, 0, 0], under: [0, 0, 0, 0],
-        tripped: [false, false, false, false], log: [], f: 50, rocof: 0, pl: 1, M: { nadir: 50, recT: null, rocof: 0, black: 0, medMin: 0, critWh: 0, peak: 0 }
-      };
-      playing = true; acc = 0; $('btn-play').textContent = '⏸ Pause';
-
-      $('sim-log-box').textContent = $('disturbance').value === 'feeder_fault' ? 'Local fault at 5 s. Ideal stiff upstream grid holds 50 Hz; this scenario tests service continuity.' : 'Disturbance starts at t = 5.0 s.';
-      delete $('sim-clock').dataset.playing;
-      if (!wsConnected) {
-        $('badge-hil').hidden = true;
-        $('speed').disabled = false;
-        $('speedV').textContent = speed + 'x';
-      }
-      revision++;
-      sendControl({ action: 'CONFIGURE', revision, scenario: scenario(), speed, playing, selected: sel });
-    }
-
-    /* ================= 3D SCENE GRAPH ================= */
-    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x05080f); scene.fog = new THREE.Fog(0x05080f, 70, 190);
-    const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.5, 500);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setSize(innerWidth, innerHeight);
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    Object.assign(renderer.domElement.style, {
-      position: 'fixed', left: '0', top: '0', zIndex: '0', pointerEvents: 'auto'
-    });
-    document.body.prepend(renderer.domElement);
-    const cv = renderer.domElement;
-
-    scene.add(new THREE.AmbientLight(0x4a5a80, 0.6));
-    const moon = new THREE.DirectionalLight(0x8fa8ff, 0.5); moon.position.set(-30, 50, 30); moon.castShadow = true;
-    moon.shadow.mapSize.set(2048, 2048);
-    Object.assign(moon.shadow.camera, { left: -60, right: 60, top: 45, bottom: -45, near: 1, far: 160 }); moon.shadow.camera.updateProjectionMatrix();
-    scene.add(moon);
-
-    const M = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .8 }, o || {}));
-    const BM = c => new THREE.MeshBasicMaterial({ color: c });
-    function plane(w, h, mat, x, y, z) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.receiveShadow = true; scene.add(m); return m; }
-    plane(300, 220, M(0x0f1d14, { roughness: 1 }), 0, 0, 0);
-    plane(110, 8, M(0x1c1e24), 0, .02, 0);
-    plane(110, 2, M(0x3a3d45), 0, .03, -5); plane(110, 2, M(0x3a3d45), 0, .03, 5);
-    for (let x = -50; x <= 50; x += 6) plane(3, .2, BM(0xcbb64a), x, .04, 0);
-
-    /* Street Lighting */
-    const lampMat = BM(0xffd58a), poolMat = new THREE.MeshBasicMaterial({ color: 0xffd58a, transparent: true, opacity: .2, blending: THREE.AdditiveBlending, depthWrite: false });
-    for (let k = 0; k < 7; k++) for (const s of [-1, 1]) {
-      const x = -36 + 12 * k, z = s * 4.6;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(.08, .1, 6.5, 8), M(0x30353f)); pole.position.set(x, 3.25, z); pole.castShadow = true; scene.add(pole);
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(.12, .12, 1.4), M(0x30353f)); arm.position.set(x, 6.5, z - s * .7); scene.add(arm);
-      const bulb = new THREE.Mesh(new THREE.SphereGeometry(.3, 10, 10), lampMat); bulb.position.set(x, 6.4, z - s * 1.3); scene.add(bulb);
-      const pool = new THREE.Mesh(new THREE.CircleGeometry(4.5, 24), poolMat); pool.rotation.x = -Math.PI / 2; pool.position.set(x, .05, z - s * 1.3); scene.add(pool);
-    }
-
-    /* Substation Transformer */
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(.15, .2, 9.5, 8), M(0x4a3b2c)); pole.position.set(0, 4.75, -9); pole.castShadow = true; scene.add(pole);
-    const trafo = new THREE.Mesh(new THREE.CylinderGeometry(.55, .55, 1.3, 16), M(0x8b95a1)); trafo.position.set(0, 7.3, -9); trafo.castShadow = true; scene.add(trafo);
-    const trafoLed = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 8), BM(0x38bdf8)); trafoLed.position.set(0, 8.1, -8.5); scene.add(trafoLed);
-
-    /* Buildings */
-    const V = [], bodies = [];
-    function makeBuilding(b) {
-      const v = {}, g = new THREE.Group(); g.position.set(b.x, 0, b.z); if (b.side > 0) g.rotation.y = Math.PI; scene.add(g); v.g = g;
-      const W = 8, D = 7, H = b.h, IH = Math.min(H, 5); v.IH = IH;
-      v.bodyMat = M(b.type === 'house' ? COLS.house[b.i % 4] : COLS[b.type]);
-      const body = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), v.bodyMat); body.position.y = H / 2; body.castShadow = true; body.receiveShadow = true; body.userData.idx = b.i; g.add(body); bodies.push(body);
-      v.roofMat = M(0x2b2f3a);
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(W + .5, .4, D + .5), v.roofMat); roof.position.y = H + .2; roof.castShadow = true; g.add(roof);
-
-      const fa = new THREE.Group(); g.add(fa); v.facade = fa;
-      v.winMat = BM(0xffd27a);
-      const rows = Math.max(1, Math.floor(H / 3.3));
-      for (let f = 0; f < rows; f++) for (const x of (f === 0 ? [-2.4, 2.4] : [-2.4, 0, 2.4])) {
-        const w = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.5), v.winMat); w.position.set(x, 2.6 + f * 3.3, D / 2 + .02); fa.add(w);
-      }
-      const door = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.2, .15), M(0x3b2a1e)); door.position.set(0, 1.1, D / 2 + .05); fa.add(door);
-      if (b.type === 'clinic') {
-        v.signMat = BM(0x22dd77);
-        const a = new THREE.Mesh(new THREE.BoxGeometry(1.1, .3, .1), v.signMat), c = new THREE.Mesh(new THREE.BoxGeometry(.3, 1.1, .1), v.signMat);
-        a.position.set(0, 3.5, D / 2 + .1); c.position.set(0, 3.5, D / 2 + .1); fa.add(a); fa.add(c);
-      }
-
-      v.light = new THREE.PointLight(0xffc870, 1.1, 26, 2); v.light.position.set(0, 3.5, D / 2 + 3); g.add(v.light);
-
-      /* Rooftop AC */
-      if (b.type !== 'clinic') {
-        const u = new THREE.Group(); u.position.set(2.2, H + .4, -1); g.add(u);
-        const bx = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.1, 1.8), M(0x9aa4b0)); bx.position.y = .55; bx.castShadow = true; u.add(bx);
-        const fg = new THREE.Group(); fg.position.y = 1.13; u.add(fg);
-        for (let k = 0; k < 3; k++) { const h = new THREE.Group(); h.rotation.y = k * Math.PI * 2 / 3; const bl = new THREE.Mesh(new THREE.BoxGeometry(.6, .03, .22), BM(0xb8c0cc)); bl.position.x = .32; h.add(bl); fg.add(h); }
-        v.acFan = fg; v.acOm = 0; v.acUnit = u;
-      }
-
-      /* Medical Marker */
-      if (b.med) {
-        v.crossMat = BM(0xff5fa8); const c = new THREE.Group(); c.position.set(0, H + 3.4, 0);
-        c.add(new THREE.Mesh(new THREE.BoxGeometry(1.6, .5, .5), v.crossMat)); c.add(new THREE.Mesh(new THREE.BoxGeometry(.5, 1.6, .5), v.crossMat)); g.add(c); v.cross = c;
-      }
-
-      /* Interior Group */
-      const I = new THREE.Group(); I.visible = false; g.add(I); v.int = I;
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(W - .5, D - .5), M(0x8b7a62)); floor.rotation.x = -Math.PI / 2; floor.position.y = .06; I.add(floor);
-      v.inventory = new THREE.Group();
-      I.add(v.inventory);
-      v.inventoryKey = '';
-      v.applianceRigs = [];
-
-      /* Power Lines */
-      const x0 = (b.x < 0 ? -1 : 1) * (b.side < 0 ? .6 : .95), zb = b.side * 2;
-      const pts = [new V3(x0, 9, -9), new V3(x0, 9, zb), new V3(b.x, 9, zb), new V3(b.x, H + .8, b.z - b.side * 3)];
-      const cp = new THREE.CurvePath(); for (let k = 0; k < pts.length - 1; k++) cp.add(new THREE.LineCurve3(pts[k], pts[k + 1]));
-      v.lineMat = BM(0xffc94d); scene.add(new THREE.Mesh(new THREE.TubeGeometry(cp, 60, .07, 6, false), v.lineMat));
-      v.path = cp; v.len = cp.getLength();
-      v.pulses = [0, 1, 2].map(k => { const m = new THREE.Mesh(new THREE.SphereGeometry(.24, 8, 8), BM(0xfff3b0)); scene.add(m); return { m, s: k / 3 }; });
-
-      const l = document.createElement('div'); l.className = 'lbl'; l.textContent = '#' + (b.i + 1) + (b.med ? ' ✚' : ''); $('labels').appendChild(l); v.lbl = l;
-      return v;
-    }
-    const interiorShapes = {
-      fridge: [.8, 1.32, .66, 0xb6c2cc], vaccine: [.86, .82, .67, 0xd9e9f6],
-      lights: [.76, .13, .26, 0xd9c272], clinical_lights: [.76, .13, .26, 0xd9c272],
-      fan: [.86, .18, .68, 0x9b7253], tv: [1.02, .61, .14, 0x375268],
-      washer: [.72, .82, .66, 0xcad8dc], microwave: [.8, .45, .46, 0x939da8],
-      pump: [.72, .4, .4, 0x36978a], ac: [1.05, .43, .44, 0xc7e5ee],
-      heater: [.59, .78, .54, 0xd8dce3], staff_heater: [.59, .78, .54, 0xd8dce3],
-      ev: [.58, .73, .25, 0x4377a4], o2: [.65, .9, .58, 0x78aca3],
-      monitor: [.78, .55, .24, 0x365a72], ventilator: [.64, .9, .48, 0x86a1b9],
-      clinical_ventilation: [1, .57, .63, 0x84a2ae], reception: [.75, .57, .3, 0x567399],
-    };
-    const shortNames = {
-      fridge: 'Fridge', vaccine: 'Vaccine fridge', lights: 'LED lamps', clinical_lights: 'Clinical lights',
-      fan: 'Ceiling fans', tv: 'TV', washer: 'Washer', microwave: 'Microwave', pump: 'Water pump',
-      ac: 'Room AC', heater: 'Geyser', staff_heater: 'Staff geyser', ev: 'EV charger',
-      o2: 'Oxygen', monitor: 'Monitor', ventilator: 'Ventilator',
-      clinical_ventilation: 'Clinical HVAC', reception: 'Computer',
-    };
-
-    function decorateAppliance(key, model, w, h, depth) {
-      const box = (width, height, length, color, x, y, z) => {
-        const part = new THREE.Mesh(new THREE.BoxGeometry(width, height, length), BM(color));
-        part.position.set(x, y, z);
-        model.add(part);
-      };
-      if (key === 'fridge' || key === 'vaccine') {
-        box(w * .9, .025, .025, 0x64748b, 0, h * .63, depth / 2);
-        box(.04, h * .18, .04, 0x334155, w * .29, h * .41, depth / 2);
-      } else if (['tv', 'monitor', 'reception', 'microwave'].includes(key)) {
-        box(w * .79, h * .72, .025, 0x102435, 0, h / 2, depth / 2);
-        if (key === 'monitor') box(w * .58, .034, .035, 0x34d399, 0, h * .54, depth / 2 + .015);
-      } else if (key === 'washer') {
-        const door = new THREE.Mesh(new THREE.CircleGeometry(w * .29, 16), BM(0x263d50));
-        door.position.set(0, h * .48, depth / 2 + .012);
-        model.add(door);
-      } else if (key === 'fan') {
-        for (let index = 0; index < 3; index++) {
-          const blade = new THREE.Mesh(new THREE.BoxGeometry(.41, .04, .12), M(0xb38865));
-          const angle = index * Math.PI * 2 / 3;
-          blade.position.set(Math.cos(angle) * .3, .18, Math.sin(angle) * .3);
-          blade.rotation.y = -angle;
-          model.add(blade);
-        }
-      } else if (['o2', 'ventilator', 'ac', 'clinical_ventilation'].includes(key)) {
-        for (let index = 0; index < 3; index++) {
-          box(w * .62, .028, .02, 0x435b69, 0, h * (.28 + index * .13), depth / 2);
-        }
-      }
-    }
-
-    function syncInterior(v, building) {
-      const devices = building.devs.filter(device => device.own);
-      const signature = devices.map(d => d.key + ':' + d.quantity).join('|');
-      if (signature === v.inventoryKey) return;
-      v.inventory.traverse(object => {
-        object.geometry?.dispose();
-        object.material?.map?.dispose();
-        object.material?.dispose();
-      });
-      v.inventory.clear();
-      v.inventoryKey = signature;
-      v.applianceRigs = devices.map((device, index) => {
-        const [w, h, depth, color] = interiorShapes[device.key] || [.8, .8, .6, 0x78909c];
-        const cols = Math.max(4, Math.ceil(Math.sqrt(devices.length)));
-        const x = -2.73 + (index % cols) * (5.46 / Math.max(1,cols-1)), z = -2.3 + Math.floor(index / cols) * (4.6 / Math.max(1,Math.ceil(devices.length/cols)-1));
-        const model = new THREE.Group();
-        model.position.set(x, .12, z);
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, depth), M(color));
-        mesh.position.y = h / 2;
-        model.add(mesh);
-        decorateAppliance(device.key, model, w, h, depth);
-        v.inventory.add(model);
-        const lamp = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 8), BM(0x64748b));
-        lamp.position.set(x, h + .22, z);
-        v.inventory.add(lamp);
-
-        const canvas = document.createElement('canvas');
-        canvas.width = 256; canvas.height = 52;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#0b1625'; ctx.fillRect(0, 0, 256, 52);
-        ctx.font = 'bold 26px system-ui'; ctx.fillStyle = '#f1f5f9';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText((shortNames[device.key] || device.name.slice(0, 16)) + (device.quantity > 1 ? ' ×' + device.quantity : ''), 128, 26);
-        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas), depthTest: false}));
-        sprite.position.set(x, h + .52, z);
-        sprite.scale.set(1.75, .36, 1);
-        v.inventory.add(sprite);
-        return {key: device.key, lamp};
-      });
-    }
-    CITY0.forEach(b => V.push(makeBuilding(b)));
-
-    const selRing = new THREE.Mesh(new THREE.RingGeometry(5.6, 6, 48), BM(0x38bdf8)); selRing.rotation.x = -Math.PI / 2; scene.add(selRing);
-    function applySel() {
-      V.forEach((v, i) => {
-        const on = i === sel;
-        for (const m of [v.bodyMat, v.roofMat]) { m.transparent = on; m.opacity = on ? .14 : 1; m.depthWrite = !on; m.needsUpdate = true; }
-        v.facade.visible = !on; v.int.visible = on;
-      });
-      selRing.position.set(CITY0[sel].x, .1, CITY0[sel].z);
-      updateInspector();
-    }
-    function select(i) {
-      sel = i;
-      $('building-choice').value = String(i);
-      applySel();
-      focusBuilding();
-      sendControl({action: 'SELECT', selected: i});
-    }
-
-    function focusBuilding() {
-      const b = CITY0[sel];
-      cam.goal.set(b.x, 1.8, b.z);
-      cam.rG = 14;
-      cam.thG = b.side < 0 ? 0 : Math.PI;
-      cam.phG = .84;
-    }
-
-    /* Camera Controller */
-    const cam = { tgt: new V3(0, 3, 0), goal: new V3(0, 3, 0), th: .35, thG: .35, ph: 1, phG: 1, r: 85, rG: 85 };
-    function placeCam() {
-      const s = Math.sin(cam.ph);
-      camera.position.set(cam.tgt.x + cam.r * s * Math.sin(cam.th), cam.tgt.y + cam.r * Math.cos(cam.ph), cam.tgt.z + cam.r * s * Math.cos(cam.th));
-      camera.lookAt(cam.tgt);
-    }
-    let drag = null;
-    cv.style.touchAction = 'none';
-    cv.style.cursor = 'grab';
-    window.addEventListener('pointerdown', e => {
-      if (e.target !== cv || e.button !== 0) return;
-      drag = { x: e.clientX, y: e.clientY, moved: 0, pointerId: e.pointerId };
-      cv.style.cursor = 'grabbing';
-      e.preventDefault();
-    });
-    window.addEventListener('pointermove', e => {
-      if (!drag || e.pointerId !== drag.pointerId) return;
-      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-      drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
-      cam.thG -= dx * .006;
-      cam.phG = Math.max(.2, Math.min(1.5, cam.phG - dy * .005));
-    });
-    function endDrag(e) {
-      if (!drag || e.pointerId !== drag.pointerId) return;
-      if (drag.moved < 5) pick(e);
-      drag = null; cv.style.cursor = 'grab';
-    }
-    window.addEventListener('pointerup', endDrag);
-    window.addEventListener('pointercancel', endDrag);
-    cv.addEventListener('wheel', e => { e.preventDefault(); cam.rG = Math.max(12, Math.min(170, cam.rG * (1 + e.deltaY * .001))); }, { passive: false });
-    const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
-    function pick(e) {
-      mouse.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(mouse, camera);
-      const h = ray.intersectObjects(bodies, false)[0]; if (h) select(h.object.userData.idx);
-    }
-    window.addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
-
-    /* Update Visuals Loop */
-    let tAnim = 0;
-    function updateVisuals(dt) {
-      const col = S.collapsed, f = S.f;
-      const k = col ? 0 : Math.max(.25, Math.min(1, (f - 48.5) / 1.5));
-      lampMat.color.setRGB(k, .84 * k, .5 * k); poolMat.opacity = .2 * k; trafoLed.material.color.setHex(col ? 0x333333 : 0x38bdf8);
-
-      S.B.forEach((b, i) => {
-        const v = V[i], powered = b.energized && !col;
-        const on = key => {
-          const device = byKey(b, key);
-          return device.on && (S.live ? device.supply !== 'unavailable' : powered);
-        };
-        const lightsOn = on('lights') || on('clinical_lights');
-        v.winMat.color.setHex(lightsOn ? 0xffd27a : 0x0a0e17);
-        v.light.intensity = lightsOn ? 1.1 : 0;
-        v.lineMat.color.setHex(powered ? 0xffc94d : (col ? 0x1a1f2b : 0x8a2222));
-
-        for (const p of v.pulses) {
-          p.m.visible = powered;
-          if (powered && v.len > 0) {
-            p.s = (p.s + dt * 10 / v.len) % 1;
-            const pt = v.path.getPointAt(Math.max(0, Math.min(0.999, p.s)));
-            if (pt) p.m.position.copy(pt);
-          }
-        }
-
-        if (v.acFan) {
-          v.acUnit.visible = byKey(b, 'ac').own;
-          v.acOm += ((on('ac') ? 16 * (f / 50) : 0) - v.acOm) * Math.min(1, dt / 1.5);
-          v.acFan.rotation.y += v.acOm * dt;
-        }
-        if (v.cross) { v.cross.rotation.y += dt * 1.2; v.crossMat.color.setHex(powered ? 0xff5fa8 : 0x4a1a2c); }
-
-        if (i === sel) {
-          syncInterior(v, b);
-          for (const rig of v.applianceRigs) {
-            const device = byKey(b, rig.key);
-            rig.lamp.material.color.setHex(on(rig.key) ? (device.supply === 'backup' ? 0x38bdf8 : 0x22c55e) : 0x64748b);
-          }
-
-        }
-      });
-    }
-
-    function labels() {
-      const col = S.collapsed;
-      const viewport = renderer.domElement.getBoundingClientRect();
-      camera.updateMatrixWorld(true);
-      S.B.forEach((b, i) => {
-        const l = V[i].lbl, p = new V3(b.x, b.h + 1.4, b.z).project(camera);
-        const x = viewport.left + (p.x * .5 + .5) * viewport.width;
-        const y = viewport.top + (-p.y * .5 + .5) * viewport.height;
-        if (p.z > 1 || p.x < -1 || p.x > 1 || p.y < -1 || p.y > 1) { l.style.display = 'none'; return; }
-        l.style.display = 'block'; l.style.left = x + 'px'; l.style.top = y + 'px';
-        const dead = !(b.energized && !col), part = b.devs.some(d => d.want && !d.on);
-        l.style.borderColor = col ? '#6b7280' : dead ? '#ef4444' : part ? '#f59e0b' : '#22c55e';
-        l.style.color = l.style.borderColor;
-      });
-    }
-
-    function chart(cv, data, min, max, color, lines) {
-      const c = cv.getContext('2d'), W = cv.width, H = cv.height; c.clearRect(0, 0, W, H);
-      const X = i => 6 + (W - 12) * S.ht[i] / TEND, Y = v => H - 6 - (H - 12) * (Math.min(max, Math.max(min, v)) - min) / (max - min);
-      c.font = '9px Segoe UI';
-      for (const [v, t] of lines) {
-        c.setLineDash([3, 3]); c.strokeStyle = '#334155'; c.beginPath(); c.moveTo(6, Y(v)); c.lineTo(W - 6, Y(v)); c.stroke(); c.setLineDash([]);
-        c.fillStyle = '#64748b'; c.fillText(t, 8, Y(v) - 2);
-      }
-      c.strokeStyle = color; c.lineWidth = 2; c.beginPath();
-      data.forEach((v, i) => i ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v))); c.stroke();
-    }
-
-    /* Update Right Dock NILM Inspector */
-    function updateInspector() {
-      const b = S.B[sel];
-      if (!S.live) {
-        delete $('device-list-container').dataset.rendered;
-        $('device-list-container').textContent = 'Waiting for authoritative backend inventory and electrical telemetry.';
-        $('continuity-box').hidden = true;
-        return;
-      }
-      $('b-title').textContent = TNAME[b.type] + ' #' + (b.i + 1) + (b.med ? ' (Medical load)' : '');
-      $('b-mac').textContent = b.mac + (b.enrolled ? ' · Enrolled' : ' · Unenrolled') + ' · ' + Math.round(b.p) + ' W';
-      $('selected-feeder-pill').textContent = 'FEEDER ' + (b.feeder + 1);
-
-      const priorityControl = ['rakshak', 'rakshak_unstaggered'].includes(S.live.mode);
-      let html = '';
-      for (const d of b.devs) {
-        if (!d.own) continue;
-        const lockout = d.lockoutRemaining;
-        let stClass = 'status-running', stText = 'RUNNING';
-
-        if (d.supply === 'backup' && d.on) { stText = 'BACKUP'; }
-        else if (!b.energized || S.collapsed) { stClass = 'status-dead'; stText = 'NO POWER'; }
-        else if (!d.want) { stClass = 'status-dead'; stText = 'IDLE'; }
-        else if (lockout > 0) { stClass = 'status-lockout'; stText = 'LOCKOUT (' + Math.ceil(lockout) + 's)'; }
-        else if (!d.on) { stClass = 'status-shed'; stText = d.waiting ? 'WAITING TO RESTORE' : 'SHED'; }
-
-        const tierClass = d.tier === 0 ? 'tier-critical' : (d.tier === 1 ? 'tier-essential' : 'tier-deferrable');
-        const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-        html += `
-          <div class="device-row">
-            <div>
-              <a class="dev-name" style="color:inherit;" href="${esc(d.spec.source)}" target="_blank" rel="noopener noreferrer" title="${esc(d.spec.basis)}">${esc(d.name)}${d.quantity > 1 ? ' ×' + d.quantity : ''}</a>
-              <small style="display:block;color:#94a3b8">${esc(d.spec.unit_power_w ?? d.spec.power_w)} W/unit · ${d.quantity} units · ${Math.round(d.w)} W installed<br>${esc((d.spec.evidence_kind || '').replaceAll('_', ' '))} · ${priorityControl ? (d.tier === 2 ? (d.spec.consent ? 'Opted in' : 'No consent') : 'Automatic control excluded') : 'No appliance-level dispatch'}<br>${esc(d.reason || 'Awaiting backend telemetry')}</small>
-              <a style="font-size:10px;color:#38bdf8" href="appliances.html?building=${b.i}&amp;appliance=${encodeURIComponent(d.key)}">Edit appliance</a>
-              ${priorityControl ? '<span class="dev-tier-chip '+tierClass+'">'+TIERN[d.tier]+'</span>' : ''}
-            </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-                <span style="color:#64748b;" title="Rated ${Math.round(d.w)} W">${Math.round(d.livePower || 0)} W</span>
-              <span class="dev-status ${stClass}">${stText}</span>
+    <!-- Views -->
+    <section class="stage">
+      <div class="view" id="view-twin" data-active="true">
+        <div class="canvas-wrap" id="scene-wrap">
+          <canvas id="scene" aria-label="3D campus view. Drag to orbit, scroll to zoom, right-drag to pan."></canvas>
+          <div class="labels" id="labels"></div>
+          <div class="overlay top-left">
+            <div class="chip-row" id="legend">
+              <span class="chip"><i style="--c:var(--b-normal)"></i>Supplied</span>
+              <span class="chip"><i style="--c:var(--warn)"></i>AC curtailed</span>
+              <span class="chip"><i style="--c:var(--crit)"></i>Feeder opened</span>
+              <span class="chip"><i style="--c:var(--b-context)"></i>Surrounding area</span>
             </div>
           </div>
-        `;
-      }
-      const list = $('device-list-container');
-      // Keep edit links mounted while the user clicks or tabs through them.
-      if (list.dataset.rendered !== html && !list.matches(':active, :focus-within')) {
-        list.innerHTML = html;
-        list.dataset.rendered = html;
-      }
-      updateContinuity(b);
-      const event = S.live?.selected === sel ? S.live.nilm_event : null;
-      $('nilm-result').textContent = event
-        ? 'NILM estimate at ' + event.timestamp.toFixed(1) + ' s · ' + (event.name || event.classification) + ' · ' + event.delta_p + ' W' +
-          (event.confidence === null ? '' : ' · ' + Math.round(event.confidence * 100) + '% signature fit')
-        : S.live ? 'NILM estimate · awaiting an aggregate power change' : 'NILM estimates available in live simulation';
-    }
-
-    /* HUD Updates */
-    function hud() {
-      const f = S.f, col = S.collapsed;
-      $('hz-display').textContent = col ? 'COLLAPSE' : f.toFixed(2) + ' Hz';
-      $('hz-display').style.color = col ? '#ef4444' : (f >= 49.9 && f <= 50.05 ? '#22c55e' : (f >= 49.5 && f <= 50.5 ? '#f59e0b' : '#ef4444'));
-
-      const rocof = S.rocof || 0;
-      $('rocof-pill').textContent = 'RoCoF: ' + (rocof > 0 ? '+' : '') + rocof.toFixed(2) + ' Hz/s';
-      $('rocof-pill').style.color = Math.abs(rocof) > 0.5 ? '#ef4444' : '#38bdf8';
-      $('sim-clock').textContent = 't = ' + S.t.toFixed(1) + ' s';
-
-      updateInspector();
-
-      // Feeder scorecard
-      const m = S.M;
-      const summary = $('mode-behavior');
-      summary.textContent = col ? 'Modeled system collapse · grid supply unavailable'
-        : S.live?.mode === 'none' ? 'Unmanaged · no emergency load shedding. Loads can remain powered while frequency falls.'
-        : S.live?.mode === 'ufls' ? 'Reference AUFLS · feeder blocks switch together.'
-        : 'Rakshak · eligible appliances can pause and restart individually.';
-      $('chart-nadir-val').textContent = 'Nadir: ' + m.nadir.toFixed(2) + ' Hz';
-      $('chart-peak-val').textContent = 'Peak after reconnection ' + (m.peak ? (m.peak * 100).toFixed(1) + '%' : '—');
-
-      $('scorecard-container').innerHTML = `
-        <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #1e293b;">
-          <span style="color:#94a3b8;">Frequency Nadir:</span>
-          <b>${m.nadir.toFixed(2)} Hz</b>
+          <div class="overlay bottom-left sun">
+            <label class="field inline">Time of day <output id="o-tod"></output>
+              <input type="range" id="tod" min="0" max="24" step="0.25" value="13">
+            </label>
+            <div class="fine" id="sun-info"></div>
+          </div>
+          <div class="overlay top-right camera">
+            <button class="btn small" id="cam-reset">Reset view</button>
+            <button class="btn small" id="cam-top">Plan</button>
+          </div>
         </div>
-        <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #1e293b;">
-          <span style="color:#94a3b8;">Max RoCoF (df/dt):</span>
-          <b>${m.rocof.toFixed(2)} Hz/s</b>
+      </div>
+
+      <div class="view" id="view-grid">
+        <div class="cards">
+          <article class="card wide">
+            <header><h3>Area frequency</h3><span class="meta" id="nadir-meta"></span></header>
+            <canvas class="chart" id="chart-freq"></canvas>
+          </article>
+          <article class="card wide">
+            <header><h3>Demand and generation</h3><span class="meta">per unit of pre-event demand</span></header>
+            <canvas class="chart" id="chart-load"></canvas>
+          </article>
+          <article class="card">
+            <header><h3>Dispatch decision</h3></header>
+            <dl class="kv" id="audit"></dl>
+          </article>
+          <article class="card">
+            <header><h3>Outcomes so far</h3></header>
+            <dl class="kv" id="outcomes"></dl>
+          </article>
+          <article class="card wide">
+            <header><h3>Event log</h3></header>
+            <ol class="log" id="log"></ol>
+          </article>
         </div>
-        <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #1e293b;">
-          <span style="color:#94a3b8;">Recovery (to 49.9 Hz):</span>
-          <b>${col ? 'Never' : (m.recT === null ? '-' : m.recT.toFixed(1) + ' s')}</b>
-        </div>
-        <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #1e293b;">
-          <span style="color:#94a3b8;">Medical Device-Min Offline:</span>
-          <b style="color:${m.medMin > 0 ? '#ef4444' : '#4ade80'}">${m.medMin.toFixed(1)} min</b>
-        </div>
-      `;
+      </div>
 
-      if (S.live) {
-        const detail = document.createElement('div');
-        detail.textContent = S.live.fleet_size + ' buildings · ' + S.live.enrolled_count +
-          ' enrolled · ' + S.live.metrics.shed_count + ' shed · ' + S.live.metrics.restore_count +
-          ' restored · ' + S.live.headroom_pu.toFixed(3) + ' p.u. headroom';
-        const {dispatch, restoration} = S.live;
-        detail.textContent += ' · ' + S.live.metrics.backup_energy_wh.toFixed(1) + ' Wh backup';
-        if (dispatch.target_w > 0) detail.textContent += ' · ' + dispatch.reason + ' · ' + Math.round(dispatch.target_w / 1000) + ' kW requested / ' + Math.round(dispatch.available_flexible_w / 1000) + ' kW eligible / ' + Math.round((dispatch.actual_relief_w || 0) / 1000) + ' kW delivered · ' + (dispatch.excluded_devices || 0) + ' devices excluded by priority, consent, supply or constraints';
-        if (restoration.waiting) detail.textContent += ' · ' + restoration.waiting + ' waiting (' + restoration.lockout + ' lockout, ' + restoration.stagger + ' stagger, ' + restoration.blocked + ' power/frequency gate)';
-        $('scorecard-container').append(detail);
-      }
+      <div class="view" id="view-lab">
+        <div class="lab" id="lab"><p class="empty">Loading experiment results…</p></div>
+      </div>
 
-      // Update bottom mini-charts
-      chart($('chart-freq'), S.hf, 47.2, Math.max(50.8, ...S.hf), '#38bdf8', [[P.thr, P.thr.toFixed(2) + ' DR'], [49.4, 'UFLS stage 1'], [47.5, '47.50 collapse model']]);
-      chart($('chart-load'), S.hd, 0, Math.max(1.6, ...S.hd), '#f97316', [[1.0, 'Nominal demand']]);
-    }
+      <div class="view" id="view-methods">
+        <article class="prose" id="methods"></article>
+      </div>
+    </section>
 
-    /* Simulation Loop */
-    let last = performance.now(), frameN = 0;
-    function loop(now) {
-      const dt = Math.min(.05, (now - last) / 1000); last = now; tAnim += dt;
-      let dth = cam.thG - cam.th; dth = Math.atan2(Math.sin(dth), Math.cos(dth));
-      cam.th += dth * .08; cam.ph += (cam.phG - cam.ph) * .08; cam.r += (cam.rG - cam.r) * .1; cam.tgt.lerp(cam.goal, .08); placeCam();
-      updateVisuals(dt); labels(); if (frameN++ % 4 === 0) hud();
-      renderer.render(scene, camera); requestAnimationFrame(loop);
-    }
+    <!-- Inspector -->
+    <aside class="inspector" id="inspector" aria-label="Building inspector">
+      <div class="empty">Select a campus building to inspect it.</div>
+    </aside>
+  </main>
 
-    /* Event Listeners */
-    [['loss', 'lossV', '%'], ['thr', 'thrV', ' Hz'], ['trec', 'trecV', ' s'], ['H', 'HV', ' s'], ['speed', 'speedV', 'x'], ['participation', 'participationV', '%'], ['backup', 'backupV', ' min']].forEach(([id, l, u]) => {
-      $(id).oninput = () => {
-        $(l).textContent = $(id).value + u;
-        if (id === 'speed') {
-          speed = +$(id).value;
-          sendControl({action: 'PLAYBACK', speed, playing});
-        }
-      };
-      if (id !== 'speed') $(id).onchange = reset;
-    });
-    const dockButtons = ['toggle-controls', 'toggle-inspector'].map($);
-    for (const button of dockButtons) {
-      button.onclick = () => {
-        const open = button.getAttribute('aria-expanded') === 'false';
-        for (const toggle of dockButtons) {
-          const active = open && toggle === button;
-          toggle.setAttribute('aria-expanded', String(active));
-          $(toggle.getAttribute('aria-controls')).dataset.open = String(active);
-        }
-      };
-    }
-    new ResizeObserver(([entry]) => {
-      document.documentElement.style.setProperty('--top-bar-height', entry.target.offsetHeight + 'px');
-    }).observe($('top-bar'));
+  <div class="mini-strip" id="mini-strip">
+    <canvas class="chart" id="chart-mini"></canvas>
+    <ol class="log compact" id="log-mini"></ol>
+  </div>
 
-    document.querySelectorAll('.mode-tab').forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        mode = tab.dataset.mode;
-        reset();
-      };
-    });
-
-    $('btn-restart').onclick = reset;
-    $('btn-play').onclick = () => {
-      if (S.complete || S.t >= TEND) { reset(); return; }
-      playing = !playing;
-      sendControl({action: 'PLAYBACK', speed, playing});
-      $('btn-play').textContent = playing ? '⏸ Pause' : '▶ Play';
-    };
-    $('btn-street-view').onclick = () => { cam.goal.set(0, 3, 0); cam.rG = 85; cam.thG = .35; cam.phG = 1; };
-    $('btn-look-inside').onclick = focusBuilding;
-    $('building-choice').replaceChildren(...CITY0.map(b => new Option(TNAME[b.type] + ' #' + (b.i + 1), b.i)));
-    $('building-choice').value = String(sel);
-    $('building-choice').onchange = event => select(Number(event.target.value));
-
-    let benchmarkRequest = null;
-    $('disturbance').onchange = reset;
-    $('preset').onchange = applyPreset;
-    $('btn-open-benchmark').onclick = async () => {
-      $('benchmark-modal').style.display = 'flex';
-      $('btn-close-modal').focus();
-      $('benchmark-results').replaceChildren();
-      $('benchmark-status').textContent = 'Running four simulations…';
-      benchmarkRequest?.abort();
-      const request = new AbortController();
-      benchmarkRequest = request;
-      try {
-        const results = await RakshakBenchmarks.run({...scenario(), inventory_revision:S.live?.inventory_revision}, request.signal);
-        if (request.signal.aborted) return;
-        RakshakBenchmarks.render($('benchmark-results'), results);
-        $('benchmark-status').textContent = 'Results from the 500-building model.';
-      } catch (error) {
-        if (!request.signal.aborted) {
-          $('benchmark-status').textContent = error.message + ' Reset the simulation if the approved inventory has changed.';
-        }
-      }
-    };
-    $('btn-close-modal').onclick = () => {
-      benchmarkRequest?.abort();
-      $('benchmark-modal').style.display = 'none';
-      $('btn-open-benchmark').focus();
-    };
-    $('benchmark-modal').onkeydown = event => {
-      if (event.key === 'Escape') $('btn-close-modal').click();
-    };
-
-    reset(); applySel(); connect(); requestAnimationFrame(loop);
-  </script>
+  <script src="three.min.js"></script>
+  <script type="module" src="app/main.js"></script>
 </body>
-
 </html>

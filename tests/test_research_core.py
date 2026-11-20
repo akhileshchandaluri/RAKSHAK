@@ -75,7 +75,7 @@ class SelectionTests(unittest.TestCase):
     def test_covering_knapsack_is_optimal_on_small_instance(self):
         class Device:
             def __init__(self, w):
-                self.base_w, self.thermal = w, None
+                self.base_w, self.thermal, self.lockout_duration = w, None, 0
 
         class Building:
             def __init__(self, idx):

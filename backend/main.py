@@ -93,6 +93,33 @@ def benchmark(req: ScenarioRequest):
     return {"scenario": req.model_dump(), "results": compare_modes(req, frozen_inventory(req))}
 
 
+@app.get("/api/campus")
+def campus_model():
+    from campus import load_campus
+    data = load_campus()
+    if data is None:
+        raise HTTPException(404, "Campus model not built; run tools/build_campus.py")
+    return data
+
+
+@app.get("/api/paper-results")
+def paper_results():
+    path = Path(__file__).resolve().parents[1] / "benchmarks" / "results" / "paper" / "summary.json"
+    if not path.exists():
+        raise HTTPException(404, "Run benchmarks/paper_experiments.py first")
+    import json as _json
+    return _json.loads(path.read_text())
+
+
+@app.get("/api/calibration")
+def calibration_results():
+    path = Path(__file__).resolve().parents[1] / "benchmarks" / "results" / "calibration.json"
+    if not path.exists():
+        raise HTTPException(404, "Run backend/calibration.py first")
+    import json as _json
+    return _json.loads(path.read_text())
+
+
 @app.get("/api/field-check")
 def field_check():
     return {"comparisons": compare_field_events()}

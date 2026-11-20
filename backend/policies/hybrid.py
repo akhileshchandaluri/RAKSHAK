@@ -32,7 +32,7 @@ LEVELS_PU = tuple(round(0.01 * k, 2) for k in range(1, 31))   # 0.01 ... 0.30
 class HybridPolicy(NadirPredictivePolicy):
     name = "hybrid"
 
-    def __init__(self, arm_period_s=30.0, resend_period_s=1.0, detection_s=0.25, **options):
+    def __init__(self, arm_period_s=60.0, resend_period_s=1.0, detection_s=0.25, **options):
         super().__init__(**options)
         self.arm_period_s, self.resend_period_s, self.detection_s = arm_period_s, resend_period_s, detection_s
 

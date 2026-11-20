@@ -4,7 +4,7 @@ const {chromium} = require(process.env.RAKSHAK_PLAYWRIGHT_MODULE || 'playwright'
  const browser=await chromium.launch({headless:true, channel:process.env.RAKSHAK_BROWSER_CHANNEL});
  const page=await browser.newPage({viewport:{width:1600,height:1000}});
  const errors=[]; page.on('pageerror', e=>errors.push(e.message));
- await page.goto('http://127.0.0.1:8000/index.html');
+ await page.goto('http://127.0.0.1:8000/street.html');
  await page.waitForFunction(()=>document.getElementById('badge-conn').textContent.includes('LIVE'),null,{timeout:45000});
  await page.locator('#btn-play').click();
  const inventory=[];

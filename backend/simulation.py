@@ -25,7 +25,7 @@ class ScenarioRequest(BaseModel):
     generation_loss: float = Field(default=0.18, ge=0.0, le=0.35)
     t_recover: float = Field(default=45.0, ge=10, le=180)
     shed_threshold: float = Field(default=49.60, ge=49.2, le=49.9)
-    grid_inertia_h: float = Field(default=5.0, ge=3, le=8)
+    grid_inertia_h: float = Field(default=5.0, ge=1.5, le=8)
     participation: float = Field(default=1.0, ge=0, le=1)
     seed: int = Field(default=42, ge=0, le=2**32 - 1)
     clinical_backup_minutes: float = Field(default=2, ge=0, le=30)
@@ -43,6 +43,9 @@ class ScenarioRequest(BaseModel):
     comm_latency_s: float = Field(default=0.0, ge=0.0, le=10.0)
     comm_jitter_s: float = Field(default=0.0, ge=0.0, le=10.0)
     comm_loss: float = Field(default=0.0, ge=0.0, le=0.9)
+    # RVCE campus twin (data/rvce/campus.json) added to the fleet when enabled.
+    campus: bool = False
+    campus_ac_share: float = Field(default=0.30, ge=0.0, le=0.8)
 
 
 class SimulationController:
@@ -60,7 +63,8 @@ class SimulationController:
             disturbance=self.scenario.disturbance,
         )
         self.fleet = FleetSimulator(cfg, self.scenario.participation, self.scenario.seed,
-                                    clinical_backup_minutes=self.scenario.clinical_backup_minutes, inventory=self.inventory)
+                                    clinical_backup_minutes=self.scenario.clinical_backup_minutes, inventory=self.inventory,
+                                    campus=self.scenario.campus, campus_ac_share=self.scenario.campus_ac_share)
         if self.scenario.dynamic_demand:
             self.fleet.configure_demand_cycles()
         self.enrolled_count = sum(building.enrolled for building in self.fleet.macro_fleet)
@@ -203,6 +207,18 @@ class SimulationController:
             if event is not None:
                 self.nilm_event = event
 
+    @staticmethod
+    def _campus_state(building, grid):
+        now = max(0.0, grid.t - grid.dt)
+        energized = building.energized and not grid.collapsed
+        ac = building.devices.get("ac")
+        return {"id": building.campus["id"], "i": building.idx, "energized": energized,
+                "power_kw": round(building.get_total_power_w(now) / 1000 if energized else 0.0, 2),
+                "ac_on": bool(ac and ac.is_on and energized), "ac_kw": round(ac.base_w / 1000, 1) if ac else 0.0,
+                "ac_curtailed": bool(ac and ac.shed_at is not None), "enrolled": building.enrolled,
+                "room_c": round(ac.thermal.temperature_c, 2) if ac and ac.thermal else None,
+                "reason": ac.reason if ac else "No flexible appliance"}
+
     def service_metrics(self):
         """Customer, comfort and fairness outcomes.
 
@@ -256,6 +272,7 @@ class SimulationController:
             mode=self.scenario.mode, disturbance=self.scenario.disturbance,
             fleet_size=len(fleet.macro_fleet), enrolled_count=self.enrolled_count, complete=self.complete,
             buildings=[b.snapshot(max(0.0, grid.t - grid.dt), grid.collapsed) for b in fleet.micro_buildings],
+            campus=[self._campus_state(b, grid) for b in fleet.campus_buildings],
             events=list(fleet.events), selected=self.selected, nilm_event=self.nilm_event,
             nilm_breakdown=self.nilm.get_tier_breakdown_w(),
             headroom_pu=round(max(0.0, headroom), 3) if not grid.collapsed else 0.0,
