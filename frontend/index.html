@@ -3,180 +3,137 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rakshak Campus Twin</title>
-  <meta name="description" content="Simulation-based digital twin of the RVCE campus and its grid area: nadir-predictive appliance dispatch beneath AUFLS.">
-  <link rel="stylesheet" href="app/twin.css">
+  <title>Rakshak · RVCE Campus Twin</title>
+  <meta name="description" content="Simulation-based digital twin of the RVCE campus: predicting grid-frequency dips and relieving them with the fewest consenting appliances, before AUFLS cuts whole feeders.">
+  <link rel="stylesheet" href="app/style.css">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    try { const t = localStorage.getItem("rakshak.theme"); if (t && t !== "system") document.documentElement.dataset.theme = t; } catch (_) {}
+  </script>
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/addons/" } }
+  </script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <div>
-        <div class="brand-name">Rakshak</div>
-        <div class="brand-sub">RVCE campus twin · simulation</div>
-      </div>
-    </div>
-    <nav class="tabs" role="tablist" aria-label="Views">
-      <button role="tab" aria-selected="true" data-view="twin">Campus twin</button>
-      <button role="tab" aria-selected="false" data-view="grid">Grid console</button>
-      <button role="tab" aria-selected="false" data-view="lab">Experiment lab</button>
-      <button role="tab" aria-selected="false" data-view="methods">Methods</button>
+  <header class="bar">
+    <a class="brand" href="#story" aria-label="Rakshak home">
+      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 12.5h2.2l1.3-3 2 6 1.3-3H16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span><b>Rakshak</b><small>RVCE campus twin</small></span>
+    </a>
+    <nav class="modes" aria-label="Views">
+      <a href="#story" data-mode="story">Story</a>
+      <a href="#compare" data-mode="compare">Compare</a>
+      <a href="#explore" data-mode="explore">Explore</a>
+      <a href="#results" data-mode="results">Results</a>
+      <a href="#methods" data-mode="methods">Methods</a>
     </nav>
-    <div class="readouts">
-      <div class="readout freq" title="Area frequency">
-        <span class="label">Frequency</span>
-        <span class="value" id="ro-freq">—</span>
+    <div class="bar-right">
+      <div class="hz" id="hz" data-band="normal" title="Area frequency">
+        <span class="hz-value" id="hz-value">50.000</span><span class="hz-unit">Hz</span>
       </div>
-      <div class="readout" title="Rate of change of frequency over 0.2 s">
-        <span class="label">RoCoF</span>
-        <span class="value" id="ro-rocof">—</span>
-      </div>
-      <div class="readout" title="Simulated time">
-        <span class="label">Time</span>
-        <span class="value" id="ro-time">—</span>
-      </div>
-      <span class="status" id="conn" data-state="waiting">Connecting</span>
+      <button class="icon-btn" id="theme" aria-label="Switch colour theme" title="Theme">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z" fill="currentColor"/></svg>
+      </button>
     </div>
   </header>
 
-  <main class="layout">
-    <!-- Scenario rail -->
-    <aside class="rail" id="rail" aria-label="Scenario">
-      <section class="group">
-        <h2>Scenario</h2>
-        <label class="field">Preset
-          <select id="preset">
-            <option value="calibrated">Calibrated India event (5 %, H 3 s)</option>
-            <option value="small">Small contingency (2 %)</option>
-            <option value="low_inertia">Low inertia (H 2 s, 5 %)</option>
-            <option value="textbook">Textbook governor (18 %, H 5 s)</option>
-            <option value="comms">Degraded communication (1 s, 40 % loss)</option>
-            <option value="custom">Custom</option>
-          </select>
-        </label>
-        <label class="field">Control policy
-          <select id="mode">
-            <option value="hybrid">Hybrid: pre-armed + NP-MRD</option>
-            <option value="np_mrd">NP-MRD (central)</option>
-            <option value="edge">Edge relays only</option>
-            <option value="rakshak">Original heuristic</option>
-            <option value="ufls">AUFLS only (reference)</option>
-            <option value="none">No protection (control)</option>
-          </select>
-        </label>
-        <div class="buttons">
-          <button class="btn primary" id="btn-apply">Run scenario</button>
-          <button class="btn" id="btn-play" aria-pressed="true">Pause</button>
-        </div>
-        <label class="field range">Speed <output id="o-speed"></output>
-          <input type="range" id="speed" min="1" max="10" step="1" value="4">
-        </label>
-      </section>
-      <section class="group">
-        <h2>Grid</h2>
-        <label class="field range">Generation loss <output id="o-loss"></output>
-          <input type="range" id="loss" min="0" max="20" step="0.5" value="5">
-        </label>
-        <label class="field range">Inertia H <output id="o-H"></output>
-          <input type="range" id="H" min="1.5" max="8" step="0.5" value="3">
-        </label>
-        <label class="field">Governor response
-          <select id="km">
-            <option value="0.15">Calibrated to Indian events (K<sub>m</sub> 0.15)</option>
-            <option value="0.95">Textbook reheat unit (K<sub>m</sub> 0.95)</option>
-          </select>
-        </label>
-        <label class="field check"><input type="checkbox" id="campus-aufls" checked>
-          Campus feeder in AUFLS stage 1 <span class="fine">(assumption)</span></label>
-        <label class="field range">Participation <output id="o-part"></output>
-          <input type="range" id="part" min="0" max="100" step="5" value="100">
-        </label>
-      </section>
-      <section class="group">
-        <h2>Communication</h2>
-        <label class="field range">Latency <output id="o-lat"></output>
-          <input type="range" id="lat" min="0" max="2" step="0.25" value="0">
-        </label>
-        <label class="field range">Packet loss <output id="o-pl"></output>
-          <input type="range" id="pl" min="0" max="60" step="5" value="0">
-        </label>
-      </section>
-      <p class="fine">Every value is a model input. Sources and assumptions are listed under Methods.</p>
-    </aside>
+  <main class="stage" id="stage">
+    <canvas id="world" aria-label="3D view of the RVCE campus and surroundings. Drag to orbit, scroll to zoom, right-drag to pan."></canvas>
+    <div id="labels" class="labels"></div>
+    <div class="split-divider" id="split-divider" hidden>
+      <span class="side-tag left" id="tag-left"></span><span class="side-tag right" id="tag-right"></span>
+    </div>
+    <div class="loading" id="loading" hidden><span class="spinner"></span><span id="loading-text">Simulating…</span></div>
 
-    <!-- Views -->
-    <section class="stage">
-      <div class="view" id="view-twin" data-active="true">
-        <div class="canvas-wrap" id="scene-wrap">
-          <canvas id="scene" aria-label="3D campus view. Drag to orbit, scroll to zoom, right-drag to pan."></canvas>
-          <div class="labels" id="labels"></div>
-          <div class="overlay top-left">
-            <div class="chip-row" id="legend">
-              <span class="chip"><i style="--c:var(--b-normal)"></i>Supplied</span>
-              <span class="chip"><i style="--c:var(--warn)"></i>AC curtailed</span>
-              <span class="chip"><i style="--c:var(--crit)"></i>Feeder opened</span>
-              <span class="chip"><i style="--c:var(--b-context)"></i>Surrounding area</span>
-            </div>
-          </div>
-          <div class="overlay bottom-left sun">
-            <label class="field inline">Time of day <output id="o-tod"></output>
-              <input type="range" id="tod" min="0" max="24" step="0.25" value="13">
-            </label>
-            <div class="fine" id="sun-info"></div>
-          </div>
-          <div class="overlay top-right camera">
-            <button class="btn small" id="cam-reset">Reset view</button>
-            <button class="btn small" id="cam-top">Plan</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="view" id="view-grid">
-        <div class="cards">
-          <article class="card wide">
-            <header><h3>Area frequency</h3><span class="meta" id="nadir-meta"></span></header>
-            <canvas class="chart" id="chart-freq"></canvas>
-          </article>
-          <article class="card wide">
-            <header><h3>Demand and generation</h3><span class="meta">per unit of pre-event demand</span></header>
-            <canvas class="chart" id="chart-load"></canvas>
-          </article>
-          <article class="card">
-            <header><h3>Dispatch decision</h3></header>
-            <dl class="kv" id="audit"></dl>
-          </article>
-          <article class="card">
-            <header><h3>Outcomes so far</h3></header>
-            <dl class="kv" id="outcomes"></dl>
-          </article>
-          <article class="card wide">
-            <header><h3>Event log</h3></header>
-            <ol class="log" id="log"></ol>
-          </article>
-        </div>
-      </div>
-
-      <div class="view" id="view-lab">
-        <div class="lab" id="lab"><p class="empty">Loading experiment results…</p></div>
-      </div>
-
-      <div class="view" id="view-methods">
-        <article class="prose" id="methods"></article>
+    <!-- Story -->
+    <section class="panel story" id="panel-story" hidden>
+      <div class="story-step" id="story-step"></div>
+      <h1 id="story-title"></h1>
+      <div id="story-body" class="story-body"></div>
+      <div class="story-kpis" id="story-kpis"></div>
+      <div class="story-nav">
+        <button class="btn ghost" id="story-prev">Back</button>
+        <div class="dots" id="story-dots"></div>
+        <button class="btn primary" id="story-next">Next</button>
       </div>
     </section>
 
-    <!-- Inspector -->
-    <aside class="inspector" id="inspector" aria-label="Building inspector">
-      <div class="empty">Select a campus building to inspect it.</div>
+    <!-- Compare -->
+    <section class="panel compare" id="panel-compare" hidden>
+      <div class="compare-pickers">
+        <label>Left <select id="cmp-left"></select></label>
+        <label>Right <select id="cmp-right"></select></label>
+      </div>
+      <div class="kpi-grid" id="cmp-kpis"></div>
+      <div class="chart-box"><div class="chart" id="cmp-chart"></div></div>
+    </section>
+
+    <!-- Explore -->
+    <section class="panel explore" id="panel-explore" hidden>
+      <h2>Scenario</h2>
+      <label class="fld">Control policy
+        <select id="x-mode">
+          <option value="hybrid">Rakshak hybrid (pre-armed + predictive)</option>
+          <option value="np_mrd">Rakshak predictive (central)</option>
+          <option value="edge">Local frequency relays</option>
+          <option value="rakshak">Fixed threshold rule</option>
+          <option value="ufls">AUFLS only</option>
+          <option value="none">No protection</option>
+        </select>
+      </label>
+      <label class="fld rng">Generation lost <output id="o-x-loss"></output><input type="range" id="x-loss" min="1" max="15" step="0.5" value="5"></label>
+      <label class="fld rng">Grid inertia H <output id="o-x-H"></output><input type="range" id="x-H" min="1.5" max="8" step="0.5" value="3"></label>
+      <label class="fld">Governor response
+        <select id="x-km"><option value="0.15">Calibrated to Indian events</option><option value="0.95">Textbook reheat unit</option></select>
+      </label>
+      <label class="fld rng">Households participating <output id="o-x-part"></output><input type="range" id="x-part" min="0" max="100" step="5" value="100"></label>
+      <label class="fld rng">Command delay <output id="o-x-lat"></output><input type="range" id="x-lat" min="0" max="2" step="0.25" value="0"></label>
+      <label class="fld rng">Packets lost <output id="o-x-pl"></output><input type="range" id="x-pl" min="0" max="60" step="5" value="0"></label>
+      <label class="fld chk"><input type="checkbox" id="x-feeder" checked> Campus on AUFLS stage-1 feeder <span class="muted">(assumption)</span></label>
+      <button class="btn primary wide" id="x-run">Simulate</button>
+      <dl class="kv" id="x-kpis"></dl>
+    </section>
+
+    <!-- Building card -->
+    <aside class="card building" id="building-card" hidden></aside>
+
+    <!-- Explainer -->
+    <aside class="drawer" id="explainer" hidden aria-label="Decision explainer">
+      <header><h2 id="ex-title">Decision</h2><button class="icon-btn" id="ex-close" aria-label="Close">✕</button></header>
+      <div id="ex-body"></div>
     </aside>
+
+    <!-- View controls -->
+    <div class="view-tools" id="view-tools">
+      <button class="chip-btn" id="cam-orbit" title="Bird's-eye orbit">3D</button>
+      <button class="chip-btn" id="cam-plan" title="Plan view">Plan</button>
+      <label class="chip-btn tod" title="Time of day"><span id="o-tod">13:00</span><input type="range" id="tod" min="0" max="24" step="0.25" value="13"></label>
+      <div class="legend">
+        <span><i class="sw normal"></i>Supplied</span>
+        <span><i class="sw curtailed"></i>Appliance paused</span>
+        <span><i class="sw open"></i>Feeder cut by AUFLS</span>
+      </div>
+    </div>
   </main>
 
-  <div class="mini-strip" id="mini-strip">
-    <canvas class="chart" id="chart-mini"></canvas>
-    <ol class="log compact" id="log-mini"></ol>
-  </div>
+  <!-- Timeline -->
+  <footer class="timeline" id="timeline">
+    <button class="icon-btn play" id="tl-play" aria-label="Play">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path id="tl-play-icon" d="M8 5v14l11-7z" fill="currentColor"/></svg>
+    </button>
+    <div class="tl-track" id="tl-track">
+      <svg class="tl-spark" id="tl-spark" preserveAspectRatio="none"></svg>
+      <div class="tl-markers" id="tl-markers"></div>
+      <input type="range" id="tl-scrub" min="0" max="270" step="0.5" value="0" aria-label="Simulated time">
+    </div>
+    <span class="tl-time" id="tl-time">0.0 s</span>
+    <select id="tl-speed" aria-label="Playback speed"><option value="1">1×</option><option value="2">2×</option><option value="4" selected>4×</option><option value="10">10×</option></select>
+  </footer>
 
-  <script src="three.min.js"></script>
+  <!-- Full-page views -->
+  <section class="page" id="page-results" hidden></section>
+  <section class="page" id="page-methods" hidden></section>
+
   <script type="module" src="app/main.js"></script>
 </body>
 </html>

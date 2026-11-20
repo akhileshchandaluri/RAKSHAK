@@ -22,7 +22,7 @@ FRAME_DT = 0.5
 
 STORY_BASE = dict(campus=True, campus_aufls_stage1=True, generation_loss=0.05, grid_inertia_h=3.0,
                   mechanical_gain=0.15, t_recover=60.0, seed=42)
-COMM = dict(comm_latency_s=1.0, comm_jitter_s=0.5, comm_loss=0.4)
+COMM = dict(comm_latency_s=1.5, comm_jitter_s=0.75, comm_loss=0.4)
 PRESETS = {
     "aufls": dict(STORY_BASE, mode="ufls"),
     "threshold": dict(STORY_BASE, mode="rakshak"),
