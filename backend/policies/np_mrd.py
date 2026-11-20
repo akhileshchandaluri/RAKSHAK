@@ -31,6 +31,7 @@ from scipy.optimize import Bounds, LinearConstraint, milp
 
 from nadir_predictor import SFRObserver
 from policies.base import DispatchPolicy
+from policies.comms import CommandChannel
 from policies.heuristic import manage_absorption
 
 
@@ -40,7 +41,9 @@ class NadirPredictivePolicy(DispatchPolicy):
     dispatches = True
 
     def __init__(self, margin_hz=0.05, restore_hysteresis_hz=0.05, actuation_delay_s=0.0,
-                 inertia_error=0.0, detect_hz=0.02):
+                 inertia_error=0.0, detect_hz=0.02, comm_latency_s=0.0, comm_jitter_s=0.0,
+                 comm_loss=0.0, seed=0):
+        self.comm = (comm_latency_s, comm_jitter_s, comm_loss, seed)
         self.margin_hz = margin_hz
         self.restore_hysteresis_hz = restore_hysteresis_hz
         self.actuation_delay_s = actuation_delay_s
@@ -49,6 +52,10 @@ class NadirPredictivePolicy(DispatchPolicy):
 
     # ------------------------------------------------------------------ state
     def reset(self, fleet, cfg):
+        latency, jitter, loss, seed = self.comm
+        self.channel = CommandChannel(latency, jitter, loss, seed)
+        # The controller plans with the nominal (mean) delivery delay.
+        self.actuation_delay_s = max(self.actuation_delay_s, latency + jitter / 2)
         self.observer = SFRObserver(cfg, inertia_error=self.inertia_error)
         self.threshold_hz = cfg.ufls_stages[0]
         self.event_t = None
@@ -184,15 +191,12 @@ class NadirPredictivePolicy(DispatchPolicy):
         relief_w = 0.0
         for building, device in chosen:
             relief_w += device.base_w
-            device.turn_off(now)
-            device.reason = "NP-MRD: minimum relief to keep predicted nadir above AUFLS stage 1"
-            if device.user_wants:
-                device.shed_at = now
-                device.restore_at = now + device.lockout_duration
+            self._send(fleet, now, "off", building, device)
             self.event_households.add(building.idx)
         if self.actuation_delay_s > 0:
             self.in_flight.append((now + self.actuation_delay_s, -relief_w / fleet.baseline_macro_w))
         fleet.shed_count += len(chosen)
+        fleet.power_dirty = True
         if fleet.first_shed_at is None:
             fleet.first_shed_at = now
         fleet.audit["actual_relief_w"] = round(relief_w)
@@ -225,17 +229,51 @@ class NadirPredictivePolicy(DispatchPolicy):
             return 0.0
         restored = 0
         picked_w = 0.0
-        for _, device in ready[:count]:
-            if device.turn_on(now):
-                self.in_flight.append((now + self.actuation_delay_s, device.base_w / fleet.baseline_macro_w))
-                device.reason = "NP-MRD: restored; predicted frequency stays above protection target"
-                device.longest_pause_s = max(device.longest_pause_s, now - device.shed_at)
-                device.shed_seconds += now - device.shed_at
-                device.shed_at = None
-                restored += 1
-                picked_w += device.base_w
+        for building, device in ready[:count]:
+            if getattr(device, "restore_sent", None) is not None and now - device.restore_sent < 2.0:
+                continue
+            self.in_flight.append((now + self.actuation_delay_s, device.base_w / fleet.baseline_macro_w))
+            device.restore_sent = now
+            self._send(fleet, now, "on", building, device)
+            restored += 1
+            picked_w += device.base_w
         if restored:
             fleet.restore_count += restored
             fleet.last_restore_at = now
-            fleet._event(now, "restore", f"NP-MRD reconnected {restored} loads at {frequency:.2f} Hz")
+            fleet._event(now, "restore", f"NP-MRD reconnect command for {restored} loads at {frequency:.2f} Hz")
         return picked_w
+
+    # ------------------------------------------------------------- actuation
+    def _send(self, fleet, now, action, building, device):
+        if self.channel.ideal:
+            self._apply(fleet, now, action, building, device)
+        else:
+            self.channel.send(now, (action, building, device))
+
+    def on_step(self, fleet, now, frequency):
+        self.observer.track(now, frequency)
+        for action, building, device in self.channel.due(now):
+            self._apply(fleet, now, action, building, device)
+
+    def _apply(self, fleet, now, action, building, device):
+        fleet.power_dirty = True
+        if action == "off":
+            if not (building.energized and device.is_on and device.eligible(now)):
+                return
+            device.turn_off(now)
+            device.absorbing = False
+            device.reason = "NP-MRD: minimum relief to keep predicted nadir above AUFLS stage 1"
+            if device.user_wants:
+                device.shed_at = now
+                device.restore_at = now + device.lockout_duration
+            return
+        device.restore_sent = None
+        if device.shed_at is None or not building.energized or not device.can_turn_on(now):
+            return
+        if device.turn_on(now):
+            device.reason = "NP-MRD: restored; predicted frequency stays above protection target"
+            device.longest_pause_s = max(device.longest_pause_s, now - device.shed_at)
+            device.shed_seconds += now - device.shed_at
+            device.shed_at = None
+            device.edge_tripped = False
+

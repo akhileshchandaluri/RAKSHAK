@@ -13,6 +13,9 @@ class DispatchPolicy:
     def reset(self, fleet, cfg):
         """Called once after the fleet is built."""
 
+    def on_step(self, fleet, now, frequency):
+        """Called every plant step (50 ms) for local sensing and command delivery."""
+
     def dispatch(self, fleet, now, frequency, rocof, supply, available, load, allow_absorption):
         raise NotImplementedError
 

@@ -408,6 +408,7 @@ class FleetSimulator:
                     if b.energized and d.user_wants and not d.is_on and d.shed_at is None and d.can_turn_on(current_t):
                         d.turn_on(current_t)
                         d.reason = "Requested load started after supply and lockout checks"
+        policy.on_step(self, current_t, grid_freq)
         total_w = self.total_power(current_t)
         if policy.dispatches and current_t + 1e-9 >= self.next_dispatch:
             self.next_dispatch = current_t + self.cfg.dispatch_interval_s

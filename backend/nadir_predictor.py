@@ -187,8 +187,10 @@ class SFRObserver:
     dead band and reserve limits of ``GridEngine`` (standard limiters on the
     Anderson-Mirheydar SFR model, see Kundur 1994, ch. 9 and 11).
 
-    * The frequency state is taken from measurement every tick; the unmeasured
-      governor/reheat state is integrated with the measured frequency as input.
+    * The frequency state is taken from measurement; the unmeasured governor/reheat
+      state is integrated with the measured frequency stream as input. ``track`` is fed
+      at 20 samples/s, a phasor-measurement reporting rate permitted for 50 Hz systems
+      by IEEE C37.118.1-2011 (10-50 frames/s).
     * The net power deficit is obtained from the swing equation solved for the power
       imbalance, P_net = P_m - D*dw - 2H*(df/dt)/f0 (Kundur 1994, eq. 3.208), averaged
       over recent ticks.
@@ -219,20 +221,25 @@ class SFRObserver:
     def set_equilibrium(self, frequency):
         self.x0 = (frequency - self.f0) / self.f0
 
-    def update(self, now, frequency, rocof):
+    def track(self, now, frequency):
+        """Advance the governor state to ``now`` using the measured frequency sample.
+        Exact discretisation of dy/dt = (c - y)/T_R with the command held over the step."""
         x = (frequency - self.f0) / self.f0
-        if self.t is not None:
-            steps = max(1, int(round((now - self.t) / self.dt)))
-            h = (now - self.t) / steps
-            for k in range(steps):
-                xi = self.x + (x - self.x) * (k + 0.5) / steps
-                dev = xi - self.x0
-                self.y = float(self.y + h * (self._command(dev) - self.y) / self.cfg.reheat_time_constant)
-        self.t, self.x = now, x
+        if self.t is not None and now > self.t:
+            command = float(self._command(self.x - self.x0))
+            a = math.exp(-(now - self.t) / self.cfg.reheat_time_constant)
+            self.y = a * self.y + (1 - a) * command
+        if self.t is None or now >= self.t:
+            self.t, self.x = now, x
+
+    def update(self, now, frequency, rocof):
+        self.track(now, frequency)
+        x = self.x
         dev = x - self.x0
         p_net = float(self._pm(dev, self.y)) - self.cfg.D * dev - 2 * self.H * rocof / self.f0
         if not self.hold:
             self.p_net_history.append((now, p_net))
+        self.p_net_history = [(t, p) for t, p in self.p_net_history if t >= now - 1.0] or self.p_net_history[-1:]
         self.hold = False
         return self.deficit()
 
@@ -297,3 +304,26 @@ class SFRObserver:
             if hi - lo <= resolution_pu:
                 break
         return float(hi), base, float(self.predict_minimum(-hi, delay_s=delay_s)[0])
+
+    def trajectory(self, deficit, horizon_s, step_s=0.05):
+        """Frequency trajectory (Hz) from the current state for a constant net deficit,
+        sampled every ``step_s`` with the same RK4 integration."""
+        cfg = self.cfg
+        h, x, y = step_s, self.x, self.y
+        out = [self.f0 * (1 + x)]
+
+        def deriv(x, y):
+            dev = x - self.x0
+            command = float(self._command(dev))
+            return (y + cfg.hp_fraction * (command - y) - deficit - cfg.D * dev) / (2 * self.H), \
+                (command - y) / cfg.reheat_time_constant
+
+        for _ in range(int(round(horizon_s / h))):
+            a1, b1 = deriv(x, y)
+            a2, b2 = deriv(x + h * a1 / 2, y + h * b1 / 2)
+            a3, b3 = deriv(x + h * a2 / 2, y + h * b2 / 2)
+            a4, b4 = deriv(x + h * a3, y + h * b3)
+            x += h * (a1 + 2 * a2 + 2 * a3 + a4) / 6
+            y += h * (b1 + 2 * b2 + 2 * b3 + b4) / 6
+            out.append(self.f0 * (1 + x))
+        return out

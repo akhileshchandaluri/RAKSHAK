@@ -12,8 +12,8 @@ from nilm_engine import NILMDisaggregator
 from policies import make_policy
 from thermal import THERMAL_SPECS, ThermalState
 
-MODES = ("none", "ufls", "rakshak", "rakshak_unstaggered", "np_mrd")
-PolicyName = Literal["none", "ufls", "rakshak", "rakshak_unstaggered", "np_mrd"]
+MODES = ("none", "ufls", "rakshak", "rakshak_unstaggered", "np_mrd", "edge", "hybrid")
+PolicyName = Literal["none", "ufls", "rakshak", "rakshak_unstaggered", "np_mrd", "edge", "hybrid"]
 DURATION = 270.0
 
 
@@ -38,6 +38,10 @@ class ScenarioRequest(BaseModel):
     # Outdoor temperature for comfort accounting. 32 degC is close to the April mean
     # daily maximum for Bengaluru in IMD climatological normals.
     ambient_c: float = Field(default=32.0, ge=10, le=48)
+    # Communication impairments for centrally dispatched policies (np_mrd, hybrid).
+    comm_latency_s: float = Field(default=0.0, ge=0.0, le=10.0)
+    comm_jitter_s: float = Field(default=0.0, ge=0.0, le=10.0)
+    comm_loss: float = Field(default=0.0, ge=0.0, le=0.9)
 
 
 class SimulationController:
@@ -85,10 +89,12 @@ class SimulationController:
         self.disconnected_households = set()
 
     def _policy_options(self):
-        if self.scenario.mode != "np_mrd":
+        sc = self.scenario
+        if sc.mode not in ("np_mrd", "hybrid"):
             return {}
-        return {"margin_hz": self.scenario.margin_hz, "actuation_delay_s": self.scenario.actuation_delay_s,
-                "inertia_error": self.scenario.inertia_error}
+        return {"margin_hz": sc.margin_hz, "actuation_delay_s": sc.actuation_delay_s,
+                "inertia_error": sc.inertia_error, "comm_latency_s": sc.comm_latency_s,
+                "comm_jitter_s": sc.comm_jitter_s, "comm_loss": sc.comm_loss, "seed": sc.seed}
 
     @property
     def complete(self):
