@@ -93,6 +93,35 @@ def benchmark(req: ScenarioRequest):
     return {"scenario": req.model_dump(), "results": compare_modes(req, frozen_inventory(req))}
 
 
+@app.get("/api/replay/presets")
+def replay_presets():
+    from replay import PRESETS
+    return {"presets": PRESETS}
+
+
+@app.get("/api/replay")
+def replay(preset: str):
+    from replay import PRESETS, get_replay
+    if preset not in PRESETS:
+        raise HTTPException(404, "Unknown preset")
+    return get_replay(PRESETS[preset], inventory_store.snapshot())
+
+
+@app.post("/api/replay")
+def replay_custom(req: ScenarioRequest):
+    from replay import get_replay
+    return get_replay(req.model_dump(), frozen_inventory(req))
+
+
+@app.on_event("startup")
+def warm_replays():
+    if os.getenv("RAKSHAK_SKIP_PRECOMPUTE"):
+        return
+    import threading
+    from replay import precompute
+    threading.Thread(target=precompute, args=(inventory_store.snapshot(),), daemon=True).start()
+
+
 @app.get("/api/campus")
 def campus_model():
     from campus import load_campus

@@ -64,6 +64,14 @@ class HeuristicPolicy(DispatchPolicy):
             fleet.audit["actual_relief_w"] = round(relief_w)
             fleet.audit["excluded_devices"] = sum(1 for b in fleet.macro_fleet for d in b.devices.values() if not (b.enrolled and b.energized and d.eligible(now)))
             if shed:
+                fleet.decisions.append({
+                    "t": round(now, 2), "kind": "shed", "policy": "threshold rule", "f": round(frequency, 3),
+                    "rocof": round(rocof, 3), "relief_requested_kw": round(budget_w / 1000, 2),
+                    "relief_delivered_kw": round(relief_w / 1000, 2), "count": shed,
+                    "summary": (f"Frequency {frequency:.2f} Hz crossed the {cfg.threshold_smart_shed:.2f} Hz rule, so the "
+                                f"rule shed in proportion to the frequency error ({relief_w / 1000:.1f} kW, {shed} "
+                                f"appliances) without predicting how much protection actually needs."),
+                })
                 fleet.shed_count += shed
                 if fleet.first_shed_at is None:
                     fleet.first_shed_at = now

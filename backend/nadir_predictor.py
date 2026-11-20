@@ -327,3 +327,29 @@ class SFRObserver:
             y += h * (b1 + 2 * b2 + 2 * b3 + b4) / 6
             out.append(self.f0 * (1 + x))
         return out
+
+    def trajectory_series(self, deficit, extra=0.0, delay_s=0.0, horizon_s=20.0, step_s=0.25):
+        """Predicted frequency path (Hz), sampled every ``step_s``, for a constant net deficit
+        with an optional extra deficit change applied after ``delay_s``. Same model and RK4
+        integration as ``predict_minimum``; used to explain decisions."""
+        cfg, h = self.cfg, 0.05
+        x, y = self.x, self.y
+        out, every = [self.f0 * (1 + x)], max(1, int(round(step_s / h)))
+
+        def deriv(x, y, p):
+            dev = x - self.x0
+            command = float(self._command(dev))
+            return (y + cfg.hp_fraction * (command - y) - p - cfg.D * dev) / (2 * self.H), \
+                (command - y) / cfg.reheat_time_constant
+
+        for k in range(int(round(horizon_s / h))):
+            p = deficit + (extra if k * h >= delay_s else 0.0)
+            a1, b1 = deriv(x, y, p)
+            a2, b2 = deriv(x + h * a1 / 2, y + h * b1 / 2, p)
+            a3, b3 = deriv(x + h * a2 / 2, y + h * b2 / 2, p)
+            a4, b4 = deriv(x + h * a3, y + h * b3, p)
+            x += h * (a1 + 2 * a2 + 2 * a3 + a4) / 6
+            y += h * (b1 + 2 * b2 + 2 * b3 + b4) / 6
+            if (k + 1) % every == 0:
+                out.append(round(self.f0 * (1 + x), 4))
+        return out

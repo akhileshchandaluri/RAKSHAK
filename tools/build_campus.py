@@ -139,6 +139,33 @@ def main():
             off = half + sgn * 0 + 10.5 / 2 + 0.8
             lights.append([round(cx + s * ux + sgn * off * nx, 1), round(cy + s * uy + sgn * off * ny, 1)])
 
+    # Neighbourhood: the simulator's 500 households are placed on the 500 non-campus
+    # footprints nearest the campus (declared mapping; household attributes are simulated).
+    # Larger simulated sites (apartments, clinics, cold chain, water pumping, shop) take the
+    # largest of those footprints so building scale stays plausible.
+    def fleet_type(i):
+        first = ["house", "house", "clinic", "house", "shop", "house",
+                 "house", "apartment", "cold_chain", "water_service", "house", "house"]
+        if i < len(first):
+            return first[i]
+        return "apartment" if i % 20 == 0 else "clinic" if i % 50 == 0 else "house"
+
+    near = sorted((b for b in buildings if not b["campus"] and b["footprint_m2"] >= 30),
+                  key=lambda b: math.hypot(*b["centroid"]))[:500]
+    by_size = sorted(near, key=lambda b: -b["footprint_m2"])
+    large_types = [i for i in range(500) if fleet_type(i) != "house"]
+    assignment = {}
+    for i, b in zip(large_types, by_size):
+        assignment[i] = b
+    rest = [b for b in near if all(b is not v for v in assignment.values())]
+    for i in (i for i in range(500) if i not in assignment):
+        assignment[i] = rest.pop(0)
+    households = []
+    for i in range(500):
+        b = assignment[i]
+        b["household"] = i
+        households.append({"fleet_index": i, "footprint_id": b["id"], "type": fleet_type(i)})
+
     campus = [b for b in buildings if b["campus"]]
     out = {
         "origin": {"lat": LAT0, "lon": LON0, "source": "RVCE published coordinates (Wikipedia infobox)"},
@@ -152,6 +179,7 @@ def main():
             "Floor-to-floor height 3.5 m.",
             "Annual energy from BEE EPI benchmarks; replace with RVCE meter data when available.",
             "Road carriageway width and streetlight spacing are illustrative.",
+            "The 500 surrounding footprints nearest the campus carry the simulator's households; their types and appliances are simulated, not surveyed.",
         ],
         "corridor": {"id": corridor_id, "length_m": round(length, 1), "width_m": round(width, 1),
                      "polygon": [[round(x, 2), round(y, 2)] for x, y in list(corridor.exterior.coords)[:-1]]},
@@ -162,6 +190,7 @@ def main():
                     "campus_annual_mwh": round(sum(b["annual_kwh"] for b in campus) / 1000, 1),
                     "campus_average_kw": round(sum(b["average_kw"] for b in campus), 1),
                     "verified_buildings": sum(b["verified"] for b in buildings)},
+        "households": households,
         "buildings": buildings,
     }
     OUT.write_text(json.dumps(out, separators=(",", ":")))

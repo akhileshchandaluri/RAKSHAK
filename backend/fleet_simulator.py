@@ -295,6 +295,8 @@ class FleetSimulator:
         self.last_restore_at = None
         self.shed_count = self.restore_count = 0
         self.events = deque(maxlen=12)
+        self.event_log = []        # complete event history (for replays)
+        self.decisions = []        # explanation records written by policies and AUFLS
         self.audit = {"reason": "Monitoring frequency", "target_w": 0, "available_flexible_w": 0}
         self.recovery = {"waiting": 0, "lockout": 0, "stagger": 0, "blocked": 0}
         self.largest_relief_shortfall_w = 0.0
@@ -331,7 +333,9 @@ class FleetSimulator:
             d.interruption_s = float(self.interruption_array[i])
 
     def _event(self, now, action, reason, **details):
-        self.events.append({"time": round(now, 2), "action": action, "reason": reason, **details})
+        entry = {"time": round(now, 2), "action": action, "reason": reason, **details}
+        self.events.append(entry)
+        self.event_log.append(entry)
 
     def _step_ufls(self, now, dt, frequency, recovery_started):
         for stage, threshold in enumerate(self.cfg.ufls_stages):
@@ -351,6 +355,14 @@ class FleetSimulator:
                             device.t_off = now
                 self.first_shed_at = now if self.first_shed_at is None else self.first_shed_at
                 self._event(now, "feeder_trip", f"AUFLS stage {stage+1}: {len(group)} modeled blocks opened at {frequency:.3f} Hz")
+                self.decisions.append({
+                    "t": round(now, 2), "kind": "aufls", "policy": "AUFLS relay", "stage": stage + 1,
+                    "threshold_hz": threshold, "f": round(frequency, 3), "buildings": [b.idx for b in group],
+                    "relief_kw": round(self.ufls_relief_w[stage] / 1000, 1),
+                    "summary": f"Frequency stayed at or below {threshold:.1f} Hz for {self.cfg.ufls_delay_s * 1000:.0f} ms, "
+                               f"so stage {stage + 1} relays opened {len(group)} feeder blocks "
+                               f"({self.ufls_relief_w[stage] / 1000:.0f} kW), interrupting every customer on them.",
+                })
         if any(self.ufls_feeder_tripped) and recovery_started and self.restore_stable_s >= 10.0:
             # Shared illustrative operator permission after generation recovery and stability.
             for building in self.macro_fleet:

@@ -107,7 +107,9 @@ class HybridPolicy(NadirPredictivePolicy):
             return
         local_rocof = (self.history[-1] - self.history[0]) / 0.2
         trip = np.nonzero(local_rocof < self.armed_rocof)[0]
+        armed_value = self.armed_rocof.copy()
         count = 0
+        tripped = []
         for i in trip:
             building, device = self.pairs[i]
             self.armed_rocof[i] = -np.inf
@@ -120,6 +122,8 @@ class HybridPolicy(NadirPredictivePolicy):
                 device.restore_at = now + device.lockout_duration
             device.reason = "Hybrid: pre-armed local RoCoF trigger"
             self.event_households.add(building.idx)
+            tripped.append({"building": building.idx, "appliance": device.name,
+                            "kw": round(device.base_w / 1000, 2), "armed_rocof": round(float(armed_value[i]), 3)})
             count += 1
         if count:
             self.local_trips += count
@@ -128,6 +132,13 @@ class HybridPolicy(NadirPredictivePolicy):
             fleet.first_shed_at = now if fleet.first_shed_at is None else fleet.first_shed_at
             fleet._event(now, "shed", f"{count} pre-armed appliances tripped locally (RoCoF {local_rocof:.3f} Hz/s)",
                          trigger="pre-armed local")
+            fleet.decisions.append({
+                "t": round(now, 2), "kind": "local_trip", "policy": self.name, "f": round(frequency, 4),
+                "rocof": round(local_rocof, 3), "chosen": tripped,
+                "summary": (f"{count} appliance(s) measured RoCoF {local_rocof:.3f} Hz/s, below the value they were "
+                            f"armed with before the event, and switched off locally. No command was needed, so "
+                            f"communication delay or loss could not slow them down."),
+            })
 
     def dispatch(self, fleet, now, frequency, rocof, supply, available, load, allow_absorption):
         if self.event_t is None:

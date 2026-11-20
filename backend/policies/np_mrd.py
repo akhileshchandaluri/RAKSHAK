@@ -124,6 +124,9 @@ class NadirPredictivePolicy(DispatchPolicy):
             "available_flexible_w": round(available_w), **self.last_prediction,
         }
         if relief_pu > 1e-6:
+            self._context = {"f": frequency, "rocof": rocof, "deficit": deficit, "base": base,
+                             "target": target, "effective_target": effective_target,
+                             "available_w": available_w, "relief_pu": relief_pu}
             delivered = self._shed(fleet, now, frequency, candidates, relief_pu * fleet.baseline_macro_w)
             if self.actuation_delay_s == 0:
                 observer.reset_estimate(observer.deficit() - delivered / fleet.baseline_macro_w)
@@ -196,10 +199,19 @@ class NadirPredictivePolicy(DispatchPolicy):
         else:
             chosen = self._select(candidates, target_w, now)
         relief_w = 0.0
+        reasons = []
         for building, device in chosen:
+            reasons.append({
+                "building": building.idx, "appliance": device.name, "kw": round(device.base_w / 1000, 2),
+                "new_customer": building.idx not in self.event_households,
+                "min_off_s": device.lockout_duration,
+                "deferred_kwh_bound": round(device.base_w * device.lockout_duration / 3.6e6, 3),
+                "comfort_risk": round(device.thermal.comfort_risk(now), 3) if getattr(device, "thermal", None) else None,
+            })
             relief_w += device.base_w
             self._send(fleet, now, "off", building, device)
             self.event_households.add(building.idx)
+        self._record_shed(fleet, now, candidates, target_w, relief_w, reasons)
         if self.actuation_delay_s > 0:
             self.in_flight.append((now + self.actuation_delay_s, -relief_w / fleet.baseline_macro_w))
         fleet.shed_count += len(chosen)
@@ -214,6 +226,44 @@ class NadirPredictivePolicy(DispatchPolicy):
                      f"{self.last_prediction['predicted_min_hz']:.3f} Hz",
                      target_w=round(target_w), delivered_w=round(relief_w), trigger="predicted nadir")
         return relief_w
+
+    def _record_shed(self, fleet, now, candidates, target_w, relief_w, reasons):
+        ctx = getattr(self, "_context", None)
+        if ctx is None:
+            return
+        base_pu = fleet.baseline_macro_w
+        delivered_pu = relief_w / base_pu
+        with_min = float(self.observer.predict_minimum(-delivered_pu, delay_s=self.actuation_delay_s,
+                                                       deficit=ctx["deficit"])[0])
+        stages = [k for k, thr in enumerate(fleet.cfg.ufls_stages)
+                  if ctx["base"] <= thr and not fleet.ufls_feeder_tripped[k]]
+        blocks = sum(len(fleet.stage_blocks[k]) for k in stages)
+        avoided = (f"Without action the model predicted a minimum of {ctx['base']:.3f} Hz, so AUFLS stage"
+                   f"{'s' if len(stages) > 1 else ''} {', '.join(str(k + 1) for k in stages)} would open "
+                   f"{blocks} feeder blocks.") if stages else (
+                   f"Without action the model predicted {ctx['base']:.3f} Hz, below the {ctx['target']:.2f} Hz target.")
+        new_customers = sum(1 for r in reasons if r["new_customer"])
+        fleet.decisions.append({
+            "t": round(now, 2), "kind": "shed", "policy": self.name,
+            "f": round(ctx["f"], 3), "rocof": round(ctx["rocof"], 3),
+            "deficit_pu": round(ctx["deficit"], 4), "deficit_kw": round(ctx["deficit"] * base_pu / 1000, 1),
+            "target_hz": round(ctx["target"], 3), "predicted_min_without": round(ctx["base"], 3),
+            "predicted_min_with": round(with_min, 3),
+            "relief_requested_kw": round(target_w / 1000, 2), "relief_delivered_kw": round(relief_w / 1000, 2),
+            "eligible_kw": round(ctx["available_w"] / 1000, 1), "eligible_appliances": len(candidates),
+            "eligible_customers": len({b.idx for b, _ in candidates}),
+            "chosen": reasons, "delay_s": self.actuation_delay_s,
+            "traj_step_s": 0.25,
+            "traj_without": self.observer.trajectory_series(ctx["deficit"], 0.0, 0.0),
+            "traj_with": self.observer.trajectory_series(ctx["deficit"], -delivered_pu, self.actuation_delay_s),
+            "counterfactual": avoided,
+            "summary": (f"Asked for the smallest relief keeping the predicted minimum at or above "
+                        f"{ctx['target']:.2f} Hz: {target_w / 1000:.1f} kW. Chose {len(reasons)} appliance(s) in "
+                        f"{len({r['building'] for r in reasons})} home(s) ({new_customers} newly affected) out of "
+                        f"{len(candidates)} eligible, preferring fewest new customers, then least guaranteed "
+                        f"deferred energy, then most comfort slack."),
+        })
+        self._context = None
 
     def _restore(self, fleet, now, frequency, enrolled, deficit):
         pending = [(b, d) for b, d in enrolled if d.shed_at is not None]
@@ -248,6 +298,15 @@ class NadirPredictivePolicy(DispatchPolicy):
             fleet.restore_count += restored
             fleet.last_restore_at = now
             fleet._event(now, "restore", f"NP-MRD reconnect command for {restored} loads at {frequency:.2f} Hz")
+            fleet.decisions.append({
+                "t": round(now, 2), "kind": "restore", "policy": self.name, "f": round(frequency, 3),
+                "count": restored, "kw": round(picked_w / 1000, 2),
+                "predicted_min_with_pickup": round(float(minima[count - 1]), 3), "floor_hz": round(floor, 3),
+                "buildings": [b.idx for b, _ in ready[:count]],
+                "summary": (f"Reconnected {restored} appliance(s) ({picked_w / 1000:.1f} kW). With their restart surge "
+                            f"the predicted minimum stays at {float(minima[count - 1]):.3f} Hz, above the "
+                            f"{floor:.2f} Hz restoration floor; the most comfort-urgent go first."),
+            })
         return picked_w
 
     # ------------------------------------------------------------- actuation
