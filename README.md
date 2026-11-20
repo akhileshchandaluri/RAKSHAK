@@ -1,53 +1,110 @@
 # Project Rakshak
 
-A grid-resilience simulation testbed for consent-aware appliance control, protected electrical services and coordinated restoration alongside reference AUFLS protection. The original 3D dashboard shows 12 buildings from the same 500-building simulated fleet. This is not a calibrated physical-feeder digital twin.
+Rakshak is a simulation-based digital twin of the RV College of Engineering campus inside a modelled grid area. It is also the research testbed for a paper on **nadir-predictive, consent-constrained appliance relief beneath under-frequency load shedding (AUFLS)** in the Indian grid.
 
-See the [verification audit](docs/verification_audit.md) for software checks and the comparison with Indian grid event records.
+When a large generator trips, AUFLS opens whole feeders and interrupts everyone on them. Rakshak asks a narrower question: what is the **smallest** set of consenting households' flexible appliances whose curtailment keeps frequency above the first AUFLS stage? And does the answer survive slow or lossy communication?
 
-## Run locally
+## Results at a glance
 
-```powershell
+All numbers come from `benchmarks/results/paper/summary.json`. The main comparison is 540 paired runs with the governor gain calibrated to Indian events.
+
+| Policy | Customers interrupted per event | AUFLS stages | Critical energy not served (Wh) |
+|---|---|---|---|
+| AUFLS only | 11.2 | 0.56 | 1.73 |
+| Original heuristic | 13.5 | 0 | 0 |
+| Edge relays | 12.3 | 0 | 0 |
+| **NP-MRD** | **1.1** | **0** | **0** |
+| **Hybrid (pre-armed)** | **1.3** | **0** | **0** |
+
+- **NP-MRD against AUFLS only:** 10.1 fewer customers interrupted per event (95 % CI 8.3–12.0, Wilcoxon p ≈ 4 × 10⁻¹²).
+- **Communication:** with 2 s command latency, central NP-MRD operates one AUFLS stage. The pre-armed hybrid operated none in any tested latency and loss combination.
+- **Calibration:** the governor gain is fitted to the Rajasthan (2023) and Khavda (2026) events, leaving one event out each time. The test-event nadir error is at most 0.007 Hz; the textbook value is off by 0.32–0.43 Hz.
+- **Trade-offs reported:** with textbook governor response at 18 % loss, NP-MRD defers more energy than the heuristic. With a 30 % underestimate of inertia, AUFLS occasionally operates.
+
+## What is new, and what is not
+
+**Established and cited:** frequency-responsive loads, staggered restoration, the SFR model, AUFLS, demand response programmes. Tata Power–AutoGrid, for example, does peak reduction over minutes to hours.
+
+**Rakshak's contribution:**
+1. **NP-MRD.** Minimum relief computed from a predicted nadir, including governor limits. Appliances are chosen by a lexicographic knapsack: customers interrupted first, then guaranteed deferred energy, then thermal slack.
+2. **Hybrid.** Nested minimum-relief sets are pre-armed for a ladder of contingency sizes and triggered locally by RoCoF, in the style of a special protection scheme. Central refinement then works over an impaired channel.
+3. **Calibration and experiments.** A calibrated Indian-event study with paired experiments, plus an open campus twin.
+
+See [docs/methods.md](docs/methods.md) for every model's source, the declared assumptions, and the items still to verify before submission.
+
+## Run
+
+```bash
 python -m pip install -r backend/requirements.txt
+```
+
+```bash
 python run_sim.py
 ```
 
-Open http://127.0.0.1:8000. The browser requires the Python server. Disconnection freezes telemetry and displays a warning. The analytics dashboard is at `/dashboard.html`, evidence register at `/evidence.html`, resident submissions at `/appliances.html`, and reviewer screen at `/reviewer.html`.
+Then open http://127.0.0.1:8000. The landing page is the campus twin, with four views:
 
-Select a showcase preset, then compare Reference AUFLS with AUFLS + Rakshak. Unmanaged and bulk-restoration modes are experimental controls. Normal operation, generation loss, demand surge, low enrollment, local feeder fault, backup exhaustion, restoration and solar surplus are available. Advanced settings expose assumptions with units. An electrical fault disconnects the selected feeder regardless of priority. Only explicitly modeled backup can continue supplying protected circuits.
+- **Campus twin:** RVCE footprints in 3D, live building state, time-of-day sun and streetlights, and a building inspector.
+- **Grid console:** frequency against the AUFLS thresholds, the predicted nadir, and an audit of every dispatch decision.
+- **Experiment lab:** the paper's results and the calibration table.
+- **Methods:** sources and assumptions.
 
-## Appliance requests and review
+The original street view is at `/street.html`. The appliance request and review pages are at `/appliances.html` and `/reviewer.html`; the server prints the reviewer credential on start.
 
-The server prints a random reviewer credential on startup. Alternatively configure `RAKSHAK_REVIEWER_TOKEN` in the local process environment before launching. Do not put the credential into source control. The reviewer enters it at `/reviewer.html`; it is used as a Bearer credential and is not stored in the browser. This is a local demonstration service, not a deployed multi-tenant identity system.
+## Reproduce
 
-Requests and decision history persist in ignored `var/inventory.sqlite3`. Override the path with `RAKSHAK_INVENTORY_DB` for isolated tests. New requests remain pending until approved or rejected with a reason. Existing configurations stay active while changes are pending. Approval does not grant control consent or install backup. Custom device types default to manual control. Every simulation freezes a revision and applies new approvals only on reset. Comparisons reject stale inventory revisions rather than silently changing the fleet.
-
-Critical and essential service priorities are distinct from ordinary/flexible consumption, control consent, and current operating state. The inspector includes inactive appliances, quantities, unit and aggregate watts, evidence, priority and state. The critical-service panel displays electrical continuity only for buildings with protected loads. No ECG or patient-health inference is generated.
-
-## Indian reference and limitations
-
-Normal band: 49.90–50.05 Hz. The dated SRPC reference profile uses 49.4/49.2/49.0/48.8 Hz and 5/6/7/7% relief allocations, scaled here to initial scenario demand and fixed whole blocks. Actual regional allocations and feeder wiring differ. India also uses generation response, reserves, operator demand management, fault protection and restoration. The dashboard does not reproduce all those systems. See the linked evidence register for the dated ADMS example and model assumptions.
-
-Experimental defaults include DR at 49.60 Hz, 100 ms AUFLS dwell, 180 s compressor lockout, and a 47.5 Hz study cutoff. These are not all national operating rules. The model has no voltage/power-flow, calibrated thermal comfort, clinical physiological model, black-start or measured device response. Backup is idealized and finite.
-
-## Verify and reproduce results
-
-```powershell
+```bash
 python -m pip install -r backend/requirements-dev.txt
-python -B -m unittest discover -s tests -v
-python -B benchmarks/benchmark_modes.py
-python -B benchmarks/research_matrix.py --workers 8
 ```
 
-The matrix runs 20 paired seeds, five enrollment levels and three loss magnitudes under two policies: 600 simulations, each 270 seconds. Results are in `benchmarks/results/paired_runs.csv` and `summary.json`. Intervals represent variability across modeled seeds, not field uncertainty. Earlier result tables from the quarter-fleet UFLS implementation are superseded.
+```bash
+python -B -m unittest discover -s tests -v
+```
 
-Browser checks use Playwright, with `RAKSHAK_PLAYWRIGHT_MODULE` pointing to an installed Playwright module and `PLAYWRIGHT_BROWSERS_PATH` configured if needed. Run `node tests/browser_showcase.cjs` with the local server active.
+```bash
+python -B backend/calibration.py
+```
 
-- [Evidence, equations and assumptions](docs/model_evidence.md)
-- [Feature transfer decisions](docs/feature_transfer.md)
-- [Presentation guide](docs/presentation_guide.md)
-- [Architecture](docs/architecture.md)
-- [Optional hardware bridge](firmware/README.md)
+```bash
+python -B benchmarks/paper_experiments.py --workers 4
+```
 
-## Alignment and credits
+```bash
+python -B paper/figures.py
+```
 
-Project Rakshak explores energy flexibility and resilient infrastructure in the context of SDG 7 and SDG 11. The project was led by [Nagasathya](https://github.com/nagasathya-06) at RV College of Engineering, Bengaluru, for Experiential Learning in fifth-semester Computer Science.
+`paper/figures.py` writes `paper/results.tex`, so every number in `paper/main.tex` comes from the data. Compile with `pdflatex main && bibtex main && pdflatex main && pdflatex main`, or upload `paper/` to Overleaf.
+
+## Campus data
+
+- **Footprints:** Microsoft Global ML Building Footprints (ODbL), filtered around RVCE.
+- **Energy:** floor area × BEE benchmark EPI for the Moderate climate zone.
+- **Unverified defaults:** names, uses, floor counts and campus membership are marked "unverified" until confirmed in `data/rvce/overrides.json`. Then run `python tools/build_campus.py`.
+
+## Repository
+
+| Path | Contents |
+|---|---|
+| `backend/grid_engine.py` | SFR plant (Anderson–Mirheydar), RK4 at 50 ms |
+| `backend/nadir_predictor.py` | Closed-form and exact nadir, operator-side observer and predictor |
+| `backend/policies/` | `np_mrd.py`, `hybrid.py`, `edge.py`, `heuristic.py` (original), `comms.py` |
+| `backend/thermal.py` | ETP thermal states and EV laxity |
+| `backend/campus.py`, `tools/build_campus.py`, `data/rvce/` | Campus model |
+| `backend/calibration.py` | Leave-one-event-out calibration |
+| `benchmarks/paper_experiments.py` | Experiments E1–E5 |
+| `paper/` | IEEE conference draft, figures, generated results |
+| `frontend/index.html`, `frontend/app/` | Twin application |
+| `firmware/` | Optional ESP32 bench prototype (not part of the paper) |
+
+## Limitations
+
+- **Model scope:** single-area frequency, with no voltage or power-flow constraints.
+- **Calibration:** only two field events, both arrested by AUFLS.
+- **Simplified inputs:** communication is an abstraction, and campus loads are benchmark estimates.
+- **No field trial.** Results describe the model, not RVCE or a utility network.
+
+Earlier documents in `docs/` (architecture, model evidence, verification audit) describe the first version and are kept for history.
+
+## Credits
+
+Experiential Learning project, RV College of Engineering, Bengaluru. Original project lead: [Nagasathya](https://github.com/nagasathya-06).

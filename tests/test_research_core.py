@@ -135,3 +135,19 @@ class OutcomeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CampusTests(unittest.TestCase):
+    def test_campus_agents_follow_benchmark_energy(self):
+        from campus import load_campus
+        from simulation import SimulationController
+        data = load_campus()
+        sim = SimulationController(ScenarioRequest(campus=True))
+        campus = [b for b in data["buildings"] if b["campus"]]
+        self.assertEqual(len(sim.fleet.campus_buildings), len(campus))
+        for agent in sim.fleet.campus_buildings:
+            b = agent.campus
+            self.assertAlmostEqual(b["annual_kwh"], b["floor_area_m2"] * b["epi_kwh_m2_yr"], delta=1e-4 * b["annual_kwh"] + 10)
+            total = sum(d.base_w for d in agent.devices.values())
+            self.assertAlmostEqual(total / 1000, b["average_kw"], delta=0.01)
+        self.assertFalse(any(b.get("verified") for b in campus))   # defaults stay flagged until confirmed

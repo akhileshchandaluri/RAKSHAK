@@ -32,11 +32,13 @@ function niceTicks(min, max, count = 5) {
  */
 export function lineChart(canvas, { series, refs = [], marks = [], xLabel = "", yLabel = "", yMin, yMax, xMin, xMax, compact = false }) {
   const { c, w, h } = prepare(canvas);
-  const pad = compact ? { l: 46, r: 12, t: 10, b: 22 } : { l: 54, r: 16, t: 14, b: 34 };
+  const hasLegend = !compact && series.length > 1;
+  const pad = compact ? { l: 46, r: 12, t: 10, b: 22 } : { l: 54, r: 16, t: hasLegend ? 30 : 14, b: 34 };
   const all = series.flatMap((s) => s.points);
   if (!all.length) return;
   const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]).concat(refs.map((r) => r.y));
-  const x0 = xMin ?? Math.min(...xs), x1 = xMax ?? Math.max(...xs, x0 + 1);
+  const x0 = xMin ?? Math.min(...xs);
+  const x1 = xMax ?? (Math.max(...xs) > x0 ? Math.max(...xs) : x0 + 1);
   let y0 = yMin ?? Math.min(...ys), y1 = yMax ?? Math.max(...ys);
   if (y1 - y0 < 1e-6) { y0 -= 0.5; y1 += 0.5; }
   const X = (v) => pad.l + ((v - x0) / (x1 - x0)) * (w - pad.l - pad.r);
@@ -51,9 +53,11 @@ export function lineChart(canvas, { series, refs = [], marks = [], xLabel = "", 
     c.fillText(t.toFixed(Math.max(0, -Math.floor(Math.log10(Math.abs((y1 - y0) / 5) || 1)))), pad.l - 6, Y(t));
   }
   // x ticks
-  for (const t of niceTicks(x0, x1, compact ? 6 : 8)) {
+  const xt = niceTicks(x0, x1, compact ? 6 : 8);
+  const xd = xt.length > 1 ? Math.max(0, -Math.floor(Math.log10(xt[1] - xt[0]) + 1e-9)) : 1;
+  for (const t of xt) {
     c.fillStyle = muted; c.textAlign = "center"; c.textBaseline = "top";
-    c.fillText(String(+t.toFixed(1)), X(t), h - pad.b + 5);
+    c.fillText(t.toFixed(xd), X(t), h - pad.b + 5);
   }
   if (!compact) {
     c.fillStyle = muted; c.textAlign = "right"; c.textBaseline = "alphabetic";
@@ -83,27 +87,39 @@ export function lineChart(canvas, { series, refs = [], marks = [], xLabel = "", 
   }
   c.restore();
   // legend
-  if (!compact && series.length > 1) {
-    let lx = pad.l + 8;
+  if (hasLegend) {
+    let lx = pad.l;
     c.textAlign = "left"; c.textBaseline = "middle";
     for (const s of series) {
-      c.fillStyle = s.color; c.fillRect(lx, pad.t + 6, 10, 2);
-      c.fillStyle = text; c.fillText(s.label, lx + 14, pad.t + 7);
+      c.fillStyle = s.color; c.fillRect(lx, 10, 10, 2);
+      c.fillStyle = text; c.fillText(s.label, lx + 14, 11);
       lx += c.measureText(s.label).width + 30;
     }
   }
 }
 
 /** groups: [{ label, values: [{ key, value }] }], keys: [{ key, label, color }] */
-export function barChart(canvas, { groups, keys, yLabel = "", log = false }) {
+export function barChart(canvas, { groups, keys, yLabel = "", legend = true }) {
   const { c, w, h } = prepare(canvas);
-  const pad = { l: 54, r: 12, t: 28, b: 40 };
+  c.font = `11px ${css("--mono") || "monospace"}`;
+  // Legend rows are laid out first so the plot never sits underneath them.
+  const rows = [[]];
+  if (legend) {
+    let x = 54;
+    for (const k of keys) {
+      const width = c.measureText(k.label).width + 28;
+      if (x + width > w - 12 && rows.at(-1).length) { rows.push([]); x = 54; }
+      rows.at(-1).push({ ...k, x }); x += width;
+    }
+  }
+  const pad = { l: 54, r: 12, t: legend ? 12 + rows.length * 16 : 12, b: 40 };
   const max = Math.max(1e-9, ...groups.flatMap((g) => g.values.map((v) => v.value)));
-  const yMax = niceTicks(0, max, 4).at(-1) || max;
+  const step = niceTicks(0, max, 4);
+  const yMax = step.length > 1 && step.at(-1) < max ? step.at(-1) + (step[1] - step[0]) : (step.at(-1) || max);
   const Y = (v) => h - pad.b - (v / yMax) * (h - pad.t - pad.b);
   const muted = css("--muted"), line = css("--line"), text = css("--text");
   c.font = `11px ${css("--mono") || "monospace"}`;
-  for (const t of niceTicks(0, yMax, 4)) {
+  for (const t of niceTicks(0, yMax, 4).filter((t) => t <= yMax + 1e-9)) {
     c.strokeStyle = line; c.beginPath(); c.moveTo(pad.l, Y(t)); c.lineTo(w - pad.r, Y(t)); c.stroke();
     c.fillStyle = muted; c.textAlign = "right"; c.textBaseline = "middle"; c.fillText(String(+t.toFixed(2)), pad.l - 6, Y(t));
   }
@@ -118,13 +134,11 @@ export function barChart(canvas, { groups, keys, yLabel = "", log = false }) {
     c.fillStyle = muted; c.textAlign = "center"; c.textBaseline = "top";
     c.fillText(g.label, pad.l + gi * gw + gw / 2, h - pad.b + 6);
   });
-  let lx = pad.l;
   c.textAlign = "left"; c.textBaseline = "middle";
-  for (const k of keys) {
-    c.fillStyle = k.color; c.fillRect(lx, 10, 10, 10);
-    c.fillStyle = text; c.fillText(k.label, lx + 14, 15);
-    lx += c.measureText(k.label).width + 28;
-  }
+  rows.forEach((row, r) => row.forEach((k) => {
+    c.fillStyle = k.color; c.fillRect(k.x, 6 + r * 16, 10, 10);
+    c.fillStyle = text; c.fillText(k.label, k.x + 14, 11 + r * 16);
+  }));
   c.save(); c.fillStyle = muted; c.translate(12, h - pad.b); c.rotate(-Math.PI / 2); c.textAlign = "left"; c.fillText(yLabel, 0, 0); c.restore();
 }
 

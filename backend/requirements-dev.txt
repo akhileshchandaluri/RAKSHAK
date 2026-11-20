@@ -1,2 +1,4 @@
 -r requirements.txt
 httpx>=0.28.0
+matplotlib>=3.8
+shapely>=2.0

@@ -43,3 +43,11 @@ Thumbs.db
 *.hex
 *.elf
 *.bin
+
+# LaTeX build artefacts
+paper/*.aux
+paper/*.log
+paper/*.bbl
+paper/*.blg
+paper/*.out
+paper/missfont.log

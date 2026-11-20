@@ -39,12 +39,12 @@ export async function renderLab(root) {
       label: `${H} s / ${(loss * 100).toFixed(1)} %`,
       values: e1.filter((r) => r.enrollment === 1 && r.H == H && r.loss == loss).map((r) => ({ key: r.policy, value: r.customers_interrupted })) }; }),
   });
-  const overall = (metric) => [{ label: "all main-comparison cases", values: keys.map((k) => {
+  const overall = (metric) => keys.map((k) => {
     const rows = e1.filter((r) => r.policy === k.key);
-    return { key: k.key, value: rows.reduce((sum, r) => sum + r[metric], 0) / Math.max(rows.length, 1) };
-  }) }];
-  barChart(document.getElementById("lab-aufls"), { keys, groups: overall("ufls_stages_tripped"), yLabel: "stages" });
-  barChart(document.getElementById("lab-ens"), { keys, groups: overall("critical_energy_not_served_wh"), yLabel: "Wh" });
+    return { label: k.label.split(" ")[0], values: [{ key: k.key, value: rows.reduce((sum, r) => sum + r[metric], 0) / Math.max(rows.length, 1) }] };
+  });
+  barChart(document.getElementById("lab-aufls"), { keys, groups: overall("ufls_stages_tripped"), yLabel: "stages", legend: false });
+  barChart(document.getElementById("lab-ens"), { keys, groups: overall("critical_energy_not_served_wh"), yLabel: "Wh", legend: false });
 
   const e2 = summary.E2_means.filter((r) => r.comm_loss === 0.4);
   for (const [id, metric] of [["lab-comm", "customers_interrupted"], ["lab-comm-aufls", "ufls_stages_tripped"]]) {
@@ -65,7 +65,8 @@ export async function renderLab(root) {
   const metrics = ["customers_interrupted", "ufls_stages_tripped", "critical_energy_not_served_wh", "total_unserved_wh", "nadir"];
   document.getElementById("lab-paired").innerHTML = `<table class="data"><thead><tr><th>Comparison</th>${metrics.map((m) => `<th>${m.replaceAll("_", " ")}</th>`).join("")}</tr></thead><tbody>${
     Object.entries(paired).map(([name, row]) => `<tr><td>${name.replace("_vs_", " vs ").replaceAll("np_mrd", "NP-MRD").replaceAll("ufls", "AUFLS").replaceAll("rakshak", "heuristic")}</td>${
-      metrics.map((m) => { const r = row[m]; return `<td>${r ? `${r.mean_difference}<br><span class="fine">[${r.ci95.join(", ")}]${r.wilcoxon_p != null ? ` p=${r.wilcoxon_p.toExponential(1)}` : ""}</span>` : "—"}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
+      metrics.map((m) => { const r = row[m]; const f = (v) => (Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(3));
+        return `<td>${r ? `${f(r.mean_difference)}<br><span class="fine">[${r.ci95.map(f).join(", ")}]${r.wilcoxon_p != null ? ` p=${r.wilcoxon_p.toExponential(1)}` : ""}</span>` : "—"}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
   document.getElementById("lab-cal").innerHTML = calibration.length ? `<table class="data"><thead><tr><th>Base (GW)</th><th>H (s)</th><th>Fitted on</th><th>K<sub>m</sub></th><th>Fit error (Hz)</th><th>Tested on</th><th>Test error (Hz)</th><th>Textbook K<sub>m</sub> error (Hz)</th></tr></thead><tbody>${
     calibration.map((r) => `<tr><td>${r.assumed_base_mw / 1000}</td><td>${r.assumed_H_s}</td><td>${r.fit_event}</td><td>${r.fitted_mechanical_gain}</td><td>${r.fit_nadir_error_hz}</td><td>${r.test_event}</td><td>${r.test_nadir_error_hz}</td><td>${r.default_gain_test_error_hz}</td></tr>`).join("")}</tbody></table>
     <p class="fine">Both reported nadirs were arrested by AUFLS near 49.4 Hz, so the events bound the governor gain from above rather than identify it exactly. Fits at K<sub>m</sub> = 0.02 sit on the search bound.</p>` : "";
