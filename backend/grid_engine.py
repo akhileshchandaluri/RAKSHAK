@@ -73,6 +73,16 @@ class GridEngine:
                 deviation = x - self.initial_x
                 error = deviation if abs(deviation * cfg.f0) > cfg.governor_deadband_hz else 0.0
                 target = max(-cfg.down_reserve_pu, min(cfg.up_reserve_pu, -error / cfg.governor_droop))
+                if cfg.plant == "sfr_reheat":
+                    # Anderson & Mirheydar (1990): dPm = K_m/R * (1 + F_H T_R s)/(1 + T_R s) * (-dw).
+                    # Reserve limits saturate the governor command (standard limiter).
+                    command = max(-cfg.down_reserve_pu, min(cfg.up_reserve_pu, -cfg.mechanical_gain * error / cfg.governor_droop))
+                    pm = governor + cfg.hp_fraction * (command - governor)
+                    return (
+                        (supply + pm - demand - cfg.D * deviation) / (2.0 * cfg.H),
+                        (command - governor) / cfg.reheat_time_constant,
+                        0.0,
+                    )
                 return (
                     (supply + turbine - demand - cfg.D * deviation) / (2.0 * cfg.H),
                     (target - governor) / cfg.governor_time_constant,
@@ -88,6 +98,8 @@ class GridEngine:
                 y + self.dt * (k1 + 2 * k2 + 2 * k3 + k4) / 6
                 for y, k1, k2, k3, k4 in zip(state, a, b, c, d)
             )
+            if cfg.plant == "sfr_reheat":
+                self.pm = self._sfr_mechanical_power()
             self.f = cfg.f0 * (1.0 + self.x)
             if self.f <= cfg.f_collapse:
                 self.collapsed = True
@@ -112,6 +124,13 @@ class GridEngine:
                 self.out_of_band = True
                 self.recovery_start = self.recovery_time = None
         return self.get_state()
+
+    def _sfr_mechanical_power(self):
+        cfg = self.cfg
+        deviation = self.x - self.initial_x
+        error = deviation if abs(deviation * cfg.f0) > cfg.governor_deadband_hz else 0.0
+        command = max(-cfg.down_reserve_pu, min(cfg.up_reserve_pu, -cfg.mechanical_gain * error / cfg.governor_droop))
+        return self.pg + cfg.hp_fraction * (command - self.pg)
 
     def get_state(self, total_load_pu=None):
         return {

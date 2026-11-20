@@ -354,119 +354,19 @@ class FleetSimulator:
             self.last_restore_at = now
             self._event(now, "feeder_restore", "Shared simulated operator permission: generation recovered and stable for 10 s")
 
+    def _policy_for(self, mode):
+        """Resolve a policy name once and keep its state for the whole run."""
+        from policies import make_policy
+        cached = getattr(self, "_policy", None)
+        if cached is not None and (cached is mode or cached.name == mode):
+            return cached
+        self._policy = make_policy(mode)
+        self._policy.reset(self, self.cfg)
+        return self._policy
+
     def _dispatch(self, now, frequency, rocof, mode, supply, available, load, allow_absorption):
-        cfg = self.cfg
-        staged = mode == "rakshak"
-        trigger = frequency <= cfg.threshold_smart_shed or (
-            rocof <= cfg.threshold_rocof_severe and frequency < 49.90
-        )
-        enrolled = [
-            (building, device) for building in self.macro_fleet
-            if building.enrolled and building.energized
-            for device in building.devices.values() if device.tier == 2 and device.control and device.consent
-        ]
-        if trigger:
-            budget_w = max(0.0, load - supply + max(0.0, 49.90 - frequency) * 0.08) * self.baseline_macro_w
-            relief_w = 0.0
-            shed = 0
-            candidates = sorted(
-                ((b, d) for b, d in enrolled if d.is_on and d.eligible(now)),
-                key=lambda pair: (
-                    -pair[1].absorbing, pair[1].shed_seconds,
-                    pair[1].key == "ac", -pair[1].base_w,
-                    pair[0].local_freq_offset,
-                ),
-            )
-            self.audit = {
-                "reason": "Frequency threshold" if frequency <= cfg.threshold_smart_shed else "Falling-frequency trigger",
-                "target_w": round(budget_w),
-                "available_flexible_w": round(sum(d.get_power_w(now) for _, d in candidates)),
-            }
-            for building, device in candidates:
-                if relief_w >= budget_w:
-                    break
-                relief_w += device.get_power_w(now)
-                device.turn_off(now)
-                device.reason = self.audit["reason"]
-                if device.user_wants:
-                    device.shed_at = now
-                    delay = (
-                        2 + cfg.restore_spread * pseudo_hash_mac(building.mac, f"{self.seed}:{device.key}")
-                        if staged else 0.0
-                    )
-                    # Staggering and minimum off time can elapse concurrently.
-                    device.restore_at = now + max(device.lockout_duration, delay)
-                device.absorbing = False
-                shed += 1
-            self.audit["actual_relief_w"] = round(relief_w)
-            self.audit["excluded_devices"] = sum(1 for b in self.macro_fleet for d in b.devices.values() if not (b.enrolled and b.energized and d.eligible(now)))
-            if shed:
-                self.shed_count += shed
-                if self.first_shed_at is None:
-                    self.first_shed_at = now
-                self._event(now, "shed", f"Shed {shed} enrolled loads ({relief_w / 1000:.1f} kW) at {frequency:.2f} Hz",
-                            target_w=self.audit["target_w"], eligible_w=self.audit["available_flexible_w"],
-                            delivered_w=round(relief_w), excluded_devices=self.audit["excluded_devices"], trigger=self.audit["reason"])
-            self.largest_relief_shortfall_w = max(self.largest_relief_shortfall_w, budget_w - relief_w)
-            self._update_recovery(now, [d for _, d in enrolled if d.shed_at is not None])
-            return
-
-        if frequency < 50.03 or not allow_absorption:
-            stopped = 0
-            for _, device in enrolled:
-                if device.absorbing:
-                    device.turn_off(now)
-                    device.absorbing = False
-                    stopped += 1
-            if stopped:
-                self._event(now, "absorption_end", f"Released {stopped} flexible loads")
-        if allow_absorption and frequency >= 50.05 and supply > load:
-            absorbed = 0
-            surplus_w = (supply - load) * self.baseline_macro_w
-            for _, device in enrolled:
-                if device.control == "shift" and not device.user_wants and not device.is_on and device.base_w <= surplus_w:
-                    if device.turn_on(now):
-                        device.absorbing = True
-                        surplus_w -= device.base_w
-                        absorbed += 1
-            if absorbed:
-                self._event(now, "absorb", f"Started {absorbed} enrolled idle EV loads to absorb surplus")
-
-        self.audit = {"reason": "Monitoring frequency", "target_w": 0, "available_flexible_w": 0}
-        pending = [(b, d) for b, d in enrolled if d.shed_at is not None]
-        self._update_recovery(now, [d for _, d in pending])
-        if self.restore_stable_s < cfg.restore_hold_s:
-            return
-        waiting = sorted(
-            ((b, d) for b, d in pending if now >= d.restore_at and d.can_turn_on(now)),
-            key=lambda pair: (
-                pair[1].shed_at + pair[1].max_pause_s, pair[1].shed_at, pair[0].idx, pair[1].key
-            ),
-        )
-        headroom = max(0.0, available - load)
-        restored = 0
-        # Convert swing-equation RoCoF to Hz over one dispatch interval.
-        response_time = cfg.dispatch_interval_s
-        for _, device in waiting:
-            pickup = device.base_w * device.inrush_ratio / self.baseline_macro_w
-            projected = frequency + (supply - load - pickup) * cfg.f0 * response_time / (2 * cfg.H)
-            if staged and (pickup > headroom or projected < cfg.restore_guard_hz):
-                self.recovery["blocked"] += 1
-                continue
-            if device.turn_on(now):
-                device.reason = "Restored after frequency, capacity and lockout checks"
-                device.longest_pause_s = max(device.longest_pause_s, now - device.shed_at)
-                device.shed_seconds += now - device.shed_at
-                device.shed_at = None
-                restored += 1
-                if staged:
-                    headroom -= pickup
-                    load += pickup
-        if restored:
-            self.recovery["waiting"] -= restored
-            self.restore_count += restored
-            self.last_restore_at = now
-            self._event(now, "restore", f"Reconnected {restored} eligible loads at {frequency:.2f} Hz")
+        """Backward-compatible entry point used by tests and older scripts."""
+        self._policy_for(mode).dispatch(self, now, frequency, rocof, supply, available, load, allow_absorption)
 
     def _update_recovery(self, now, devices):
         self.recovery = {
@@ -478,12 +378,13 @@ class FleetSimulator:
 
     def step(self, current_t, dt, grid_freq, rocof, mode, *, supply=1.0, available=1.0,
              external_demand=0.0, recovery_started=False, allow_absorption=False):
+        policy = self._policy_for(mode)
         self.update_demand(current_t)
         if grid_freq >= self.cfg.threshold_recover and abs(rocof) < 0.10:
             self.restore_stable_s += dt
         else:
             self.restore_stable_s = 0.0
-        if mode in {"ufls", "rakshak", "rakshak_unstaggered"}:
+        if policy.uses_ufls:
             self._step_ufls(current_t, dt, grid_freq, recovery_started)
         if self.power_dirty or current_t + 1e-9 >= self.next_maintenance:
             self.next_maintenance = current_t + self.cfg.dispatch_interval_s
@@ -508,10 +409,10 @@ class FleetSimulator:
                         d.turn_on(current_t)
                         d.reason = "Requested load started after supply and lockout checks"
         total_w = self.total_power(current_t)
-        if mode in {"rakshak", "rakshak_unstaggered"} and current_t + 1e-9 >= self.next_dispatch:
+        if policy.dispatches and current_t + 1e-9 >= self.next_dispatch:
             self.next_dispatch = current_t + self.cfg.dispatch_interval_s
-            self._dispatch(current_t, grid_freq, rocof, mode, supply, available,
-                           total_w / self.baseline_macro_w + external_demand, allow_absorption)
+            policy.dispatch(self, current_t, grid_freq, rocof, supply, available,
+                            total_w / self.baseline_macro_w + external_demand, allow_absorption)
             self.power_dirty = True
             total_w = self.total_power(current_t)
         return total_w / self.baseline_macro_w

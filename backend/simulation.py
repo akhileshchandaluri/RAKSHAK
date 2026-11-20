@@ -9,13 +9,16 @@ from config import GridConfig
 from fleet_simulator import FleetSimulator
 from grid_engine import GridEngine
 from nilm_engine import NILMDisaggregator
+from policies import make_policy
+from thermal import THERMAL_SPECS, ThermalState
 
-MODES = ("none", "ufls", "rakshak", "rakshak_unstaggered")
+MODES = ("none", "ufls", "rakshak", "rakshak_unstaggered", "np_mrd")
+PolicyName = Literal["none", "ufls", "rakshak", "rakshak_unstaggered", "np_mrd"]
 DURATION = 270.0
 
 
 class ScenarioRequest(BaseModel):
-    mode: Literal["none", "ufls", "rakshak", "rakshak_unstaggered"] = "rakshak"
+    mode: PolicyName = "np_mrd"
     disturbance: Literal["generation_loss", "solar_surplus", "demand_surge", "feeder_fault"] = "generation_loss"
     fault_feeder: int = Field(default=0, ge=0, le=3)
     inventory_revision: int | None = Field(default=None, ge=0)
@@ -27,6 +30,14 @@ class ScenarioRequest(BaseModel):
     seed: int = Field(default=42, ge=0, le=2**32 - 1)
     clinical_backup_minutes: float = Field(default=2, ge=0, le=30)
     dynamic_demand: bool = False
+    plant: Literal["sfr_reheat", "two_lag"] = "sfr_reheat"
+    # NP-MRD settings (see policies/np_mrd.py)
+    margin_hz: float = Field(default=0.05, ge=0.0, le=0.5)
+    actuation_delay_s: float = Field(default=0.0, ge=0.0, le=5.0)
+    inertia_error: float = Field(default=0.0, ge=-0.5, le=0.5)
+    # Outdoor temperature for comfort accounting. 32 degC is close to the April mean
+    # daily maximum for Bengaluru in IMD climatological normals.
+    ambient_c: float = Field(default=32.0, ge=10, le=48)
 
 
 class SimulationController:
@@ -36,7 +47,8 @@ class SimulationController:
 
     def reset(self, scenario=None):
         self.scenario = scenario or self.scenario
-        cfg = GridConfig(H=self.scenario.grid_inertia_h, threshold_smart_shed=self.scenario.shed_threshold)
+        cfg = GridConfig(H=self.scenario.grid_inertia_h, threshold_smart_shed=self.scenario.shed_threshold,
+                         plant=self.scenario.plant)
         self.grid = GridEngine(cfg)
         self.grid.reset(
             loss=self.scenario.generation_loss, t_rec=self.scenario.t_recover,
@@ -59,6 +71,24 @@ class SimulationController:
         self.served_energy_wh = 0.0
         self.fault_active = False
         self.water_buildings = [b for b in self.fleet.macro_fleet if b.tank_l is not None]
+        self.fleet._policy = make_policy(self.scenario.mode, **self._policy_options())
+        self.fleet._policy.reset(self.fleet, cfg)
+        self.thermal_devices = []
+        for building in self.fleet.macro_fleet:
+            for device in building.devices.values():
+                spec = THERMAL_SPECS.get(device.spec.get("catalog_key", device.key))
+                device.thermal = ThermalState(spec, self.scenario.ambient_c, power_w=device.base_w) if spec else None
+                if spec:
+                    self.thermal_devices.append((building, device))
+        self.next_thermal = 0.0
+        self.curtailed_households = set()
+        self.disconnected_households = set()
+
+    def _policy_options(self):
+        if self.scenario.mode != "np_mrd":
+            return {}
+        return {"margin_hz": self.scenario.margin_hz, "actuation_delay_s": self.scenario.actuation_delay_s,
+                "inertia_error": self.scenario.inertia_error}
 
     @property
     def complete(self):
@@ -146,6 +176,18 @@ class SimulationController:
             delivery = min(available_l, .25 * grid.dt)
             building.tank_l = min(500.0, available_l - delivery)
             building.water_shortfall_l += .25 * grid.dt - delivery
+        if now + 1e-9 >= self.next_thermal:
+            interval = grid.cfg.dispatch_interval_s
+            self.next_thermal = now + interval
+            for building, device in self.thermal_devices:
+                running = device.is_on and building.energized and not grid.collapsed
+                if device.user_wants or device.shed_at is not None:
+                    device.thermal.step(interval, running, now)
+                if device.shed_at is not None and device.tier == 2 and building.energized:
+                    self.curtailed_households.add(building.idx)
+            for building in fleet.macro_fleet:
+                if not building.energized or grid.collapsed:
+                    self.disconnected_households.add(building.idx)
         if measure_nilm:
             building = fleet.micro_buildings[self.selected]
             watts = (building.critical_w if building.on_backup else
@@ -153,6 +195,35 @@ class SimulationController:
             event = self.nilm.feed_sample(grid.t, watts, watts / 230)
             if event is not None:
                 self.nilm_event = event
+
+    def service_metrics(self):
+        """Customer, comfort and fairness outcomes.
+
+        Customers interrupted follow the customer-count basis of SAIFI (IEEE Std 1366-2022).
+        Fairness is Jain's index (Jain, Chiu, Hawe, DEC-TR-301, 1984) of curtailed flexible
+        energy over enrolled households that own flexible appliances."""
+        fleet = self.fleet
+        fleet.sync_metrics()
+        per_household = []
+        for building in fleet.macro_fleet:
+            flexible = [d for d in building.devices.values() if d.tier == 2 and d.control]
+            if building.enrolled and flexible:
+                per_household.append(sum(d.unserved_wh for d in flexible))
+        x = np.array(per_household)
+        jain = float(x.sum() ** 2 / (len(x) * (x ** 2).sum())) if len(x) and (x ** 2).sum() > 0 else 1.0
+        flexible_unserved_wh = float(sum(d.unserved_wh for b in fleet.macro_fleet
+                                         for d in b.devices.values() if d.tier == 2 and d.control))
+        protected = [b for b in fleet.macro_fleet if b.critical_w > 0]
+        return {
+            "households_curtailed": len(self.curtailed_households - self.disconnected_households),
+            "households_disconnected": len(self.disconnected_households),
+            "customers_interrupted": len(self.curtailed_households | self.disconnected_households),
+            "protected_sites_interrupted": sum(1 for b in protected if b.critical_interruption_s > 0),
+            "comfort_violation_degmin": round(sum(d.thermal.violation_degmin for _, d in self.thermal_devices), 3),
+            "flexible_unserved_wh": round(flexible_unserved_wh, 2),
+            "jain_fairness": round(jain, 4),
+            "ufls_stages_tripped": sum(1 for w in fleet.ufls_relief_w if w > 0),
+        }
 
     def snapshot(self):
         grid, fleet = self.grid, self.fleet
@@ -167,6 +238,7 @@ class SimulationController:
             "restore_count": fleet.restore_count,
             "backup_energy_wh": round(self.backup_energy_wh, 2),
             "relief_shortfall_kw": round(fleet.largest_relief_shortfall_w / 1000, 2),
+            **self.service_metrics(),
         })
         headroom = grid.get_generation_supply(grid.t) + grid.cfg.up_reserve_pu - grid.load_pu
         snapshot.update(
@@ -182,6 +254,7 @@ class SimulationController:
             headroom_pu=round(max(0.0, headroom), 3) if not grid.collapsed else 0.0,
             restoration_hold_s=round(fleet.restore_stable_s, 1),
             restoration=fleet.recovery, dispatch=fleet.audit,
+            prediction=getattr(fleet._policy, "last_prediction", None),
         )
         return snapshot
 
