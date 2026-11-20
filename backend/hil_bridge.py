@@ -40,10 +40,13 @@ class HILBridge:
             self.ser = None
         self.last_hardware_telemetry["connected"] = False
 
-    def send_grid_state(self, timestamp, frequency, rocof):
+    def send_grid_state(self, timestamp, frequency, rocof, armed_rocof=None):
+        """Send the simulated measurement and, for the hybrid policy, the RoCoF value the
+        board's deferrable channel is armed with (None = not armed)."""
         if self.ser is None:
             return
-        packet = {"t": round(timestamp, 2), "f": round(frequency, 3), "df": round(rocof, 3)}
+        packet = {"t": round(timestamp, 2), "f": round(frequency, 3), "df": round(rocof, 3),
+                  "arm": None if armed_rocof is None else round(armed_rocof, 4)}
         try:
             self.ser.write((json.dumps(packet) + "\n").encode())
         except (OSError, serial.SerialException):
@@ -74,6 +77,7 @@ class HILBridge:
                     "relay_l2_essential": bool(data.get("shed_l2")),
                     "relay_l3_deferrable": bool(data.get("shed_l3")),
                     "input_fresh": data.get("input_fresh"),
+                    "armed": data.get("armed"), "local_trip": data.get("local_trip"),
                 }
                 self.last_received = time.monotonic()
         if self.last_received is not None:

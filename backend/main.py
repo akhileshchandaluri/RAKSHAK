@@ -125,6 +125,17 @@ def field_check():
     return {"comparisons": compare_field_events()}
 
 
+def board_arming(sim):
+    """The bench board stands in for the appliance armed at the smallest contingency level
+    (least negative RoCoF), so it reacts to the moderate demonstration events."""
+    import math
+    armed = getattr(sim.fleet._policy, "armed_rocof", None)
+    if armed is None:
+        return None
+    values = sorted(float(v) for v in armed if math.isfinite(v))
+    return values[-1] if values else None
+
+
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry(websocket: WebSocket):
     await websocket.accept()
@@ -184,7 +195,8 @@ async def websocket_telemetry(websocket: WebSocket):
                     sim.step()
             if hil.ser is not None:
                 if playback.playing and not sim.complete:
-                    await asyncio.to_thread(hil.send_grid_state, sim.grid.t, sim.grid.f, sim.grid.compute_rocof())
+                    await asyncio.to_thread(hil.send_grid_state, sim.grid.t, sim.grid.f, sim.grid.compute_rocof(),
+                                            board_arming(sim))
                 await asyncio.to_thread(hil.poll_hardware_response)
             await websocket.send_json({
                 **sim.snapshot(), "revision": revision,

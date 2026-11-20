@@ -7,7 +7,14 @@
  * 1. Dual-Core architecture (Core 0: Telemetry; Core 1: Real-time relay FSM & RoCoF)
  * 2. Hardware MAC-hash decentralized staggered restoration (Anti-Rebound)
  * 3. Compressor lockout timer against short-cycling (Oyefeso et al., IEEE 2024)
- * 4. Priority-tiered load shedding:
+ * 4. Hybrid pre-armed trigger (paper Sec. "Hybrid"): the twin's planner sends an armed
+ *    RoCoF value ("arm"); the board then trips its deferrable channel locally when its
+ *    own RoCoF measurement falls below that value, with no further command needed.
+ *    The arming survives loss of the command link.
+ * 5. Optional local frequency measurement from a zero-crossing detector on
+ *    PIN_ZERO_CROSS_INT (isolated low-voltage AC source only), used when the simulator
+ *    stream is stale. RoCoF uses the same 0.2 s window as the simulator.
+ * 6. Priority-tiered load shedding:
  *    - Tier 0: Critical proxy (LED) -> never commanded off by the firmware
  *    - Tier 1: Essential (Fan) -> Shed on extreme dip
  *    - Tier 2: Deferrable (Heater / AC) -> First to shed
@@ -37,6 +44,22 @@ std::atomic<float> currentFrequency{50.00f};
 std::atomic<float> currentRoCoF{0.00f};
 std::atomic<unsigned long> lastInputTime{0};
 std::atomic<bool> haveInput{false};
+std::atomic<float> armedRoCoF{NAN};          // NAN = not armed
+std::atomic<bool> localTrip{false};
+
+// Zero-crossing measurement (rising edges, one per cycle)
+volatile unsigned long zcLastMicros = 0;
+volatile unsigned long zcPeriodMicros = 0;
+float zcHistory[5] = {0};                    // frequency every 50 ms, 0.2 s window
+int zcIndex = 0;
+unsigned long zcLastSample = 0;
+
+void IRAM_ATTR onZeroCross() {
+    const unsigned long t = micros();
+    const unsigned long period = t - zcLastMicros;
+    if (period > 15000 && period < 25000) zcPeriodMicros = period;   // 40-66 Hz plausibility
+    zcLastMicros = t;
+}
 
 // Timing & Timers
 unsigned long lastShedTimestamp = 0;
@@ -93,7 +116,37 @@ void TaskRelayLogic(void *) {
                 currentRoCoF = rocof;
                 lastInputTime = millis();
                 haveInput = true;
+                float arm;
+                if (readNumber(line, "\"arm\"", arm)) armedRoCoF = arm;
+                else if (line.indexOf("\"arm\":null") >= 0) armedRoCoF = NAN;
             }
+        }
+
+        const unsigned long nowMs = millis();
+        // Local measurement from the zero-crossing detector when the stream is stale.
+        if (nowMs - zcLastSample >= 50 && zcPeriodMicros > 0) {
+            zcLastSample = nowMs;
+            zcHistory[zcIndex % 5] = 1e6f / zcPeriodMicros;
+            zcIndex++;
+            if (zcIndex >= 5 && (!haveInput || nowMs - lastInputTime > INPUT_TIMEOUT_MS)) {
+                const float newest = zcHistory[(zcIndex - 1) % 5], oldest = zcHistory[zcIndex % 5];
+                currentFrequency = newest;
+                currentRoCoF = (newest - oldest) / 0.2f;
+                lastInputTime = nowMs;
+                haveInput = true;
+            }
+        }
+
+        // Pre-armed local trigger: acts on the device's own RoCoF, no command required.
+        const float arm = armedRoCoF.load();
+        if (!isnan(arm) && haveInput && currentRoCoF < arm && currentFrequency < 49.95f &&
+            currentState == GRID_NORMAL) {
+            digitalWrite(PIN_RELAY_DEFERRABLE, HIGH);
+            digitalWrite(PIN_LED_SHED_ACTIVE, HIGH);
+            lastShedTimestamp = nowMs;
+            localTrip = true;
+            armedRoCoF = NAN;                // one-shot until re-armed
+            currentState = UNDER_FREQUENCY_TRIP;
         }
 
         const unsigned long now = millis();
@@ -172,6 +225,7 @@ void TaskRelayLogic(void *) {
                     digitalWrite(PIN_RELAY_ESSENTIAL, LOW);
                     digitalWrite(PIN_RELAY_DEFERRABLE, LOW);
                     digitalWrite(PIN_LED_SHED_ACTIVE, LOW);
+                    localTrip = false;
                     currentState = GRID_NORMAL;
                 }
                 break;
@@ -196,6 +250,8 @@ void TaskTelemetry(void *) {
         statusJson += "\"shed_l2\":" + String(digitalRead(PIN_RELAY_ESSENTIAL) == HIGH ? 1 : 0) + ",";
         statusJson += "\"shed_l1\":0,"; // Always protected
         statusJson += "\"input_fresh\":" + String(haveInput && millis() - lastInputTime <= INPUT_TIMEOUT_MS ? "true" : "false") + ",";
+        statusJson += "\"armed\":" + String(isnan(armedRoCoF.load()) ? "false" : "true") + ",";
+        statusJson += "\"local_trip\":" + String(localTrip.load() ? "true" : "false") + ",";
         statusJson += "\"state\":" + String(static_cast<int>(currentState.load()));
         statusJson += "}";
 
@@ -221,6 +277,9 @@ void setup() {
     digitalWrite(PIN_RELAY_DEFERRABLE, LOW);
     digitalWrite(PIN_LED_GRID_HEALTHY, HIGH);
     digitalWrite(PIN_LED_SHED_ACTIVE, LOW);
+
+    pinMode(PIN_ZERO_CROSS_INT, INPUT);
+    attachInterrupt(digitalPinToInterrupt(PIN_ZERO_CROSS_INT), onZeroCross, RISING);
 
     // Compute Hardware MAC Address Hash
     deviceMacHash = computeMacHash();

@@ -40,12 +40,12 @@ METRICS = ("nadir", "ufls_stages_tripped", "feeder_trips", "critical_energy_not_
 
 
 def plan(quick=False):
-    seeds = range(3 if quick else 6)
+    seeds = range(3 if quick else 10)
     runs = []
     policies = ("ufls", "rakshak", "edge", "np_mrd", "hybrid")
     for H in ((3,) if quick else (5, 3, 2)):
         for loss in ((0.05,) if quick else (0.02, 0.035, 0.05)):
-            for enrollment in ((1.0,) if quick else (0.5, 1.0)):
+            for enrollment in ((1.0,) if quick else (0.25, 0.5, 1.0)):
                 for seed in seeds:
                     for policy in policies:
                         runs.append(("E1", dict(mode=policy, grid_inertia_h=H, generation_loss=loss,
