@@ -30,7 +30,7 @@ All numbers come from `benchmarks/results/paper/summary.json`. The main comparis
 2. **Hybrid.** Nested minimum-relief sets are pre-armed for a ladder of contingency sizes and triggered locally by RoCoF, in the style of a special protection scheme. Central refinement then works over an impaired channel.
 3. **Calibration and experiments.** A calibrated Indian-event study with paired experiments, plus an open campus twin.
 
-See [docs/methods.md](docs/methods.md) for every model's source, the declared assumptions, and the items still to verify before submission.
+See [docs/literature_review.md](docs/literature_review.md) for what prior work already covers and [docs/methods.md](docs/methods.md) for every model's source, the declared assumptions, and the items still to verify before submission.
 
 ## Run
 

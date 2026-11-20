@@ -32,6 +32,7 @@ for (const [id, fmt] of Object.entries(outputs)) {
 }
 for (const id of ["loss", "H", "part", "lat", "pl"]) $(id).addEventListener("input", () => ($("preset").value = "custom"));
 $("km").addEventListener("change", () => ($("preset").value = "custom"));
+$("campus-aufls").addEventListener("change", configure);
 $("preset").addEventListener("change", () => {
   const p = PRESETS[$("preset").value];
   if (!p) return;
@@ -57,7 +58,7 @@ function scenario() {
     mode: $("mode").value, generation_loss: +$("loss").value / 100, grid_inertia_h: +$("H").value,
     mechanical_gain: +$("km").value, participation: +$("part").value / 100,
     comm_latency_s: +$("lat").value, comm_jitter_s: +$("lat").value / 2, comm_loss: +$("pl").value / 100,
-    campus: true, disturbance: "generation_loss", t_recover: 60,
+    campus: true, campus_aufls_stage1: $("campus-aufls").checked, disturbance: "generation_loss", t_recover: 60,
   };
 }
 

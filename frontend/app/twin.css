@@ -70,6 +70,8 @@ h2, h3 { margin: 0; font-weight: 600; }
 .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
 .field.range { flex-direction: row; flex-wrap: wrap; justify-content: space-between; }
 .field.range input { width: 100%; }
+.field.check { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
+.field.check input { accent-color: var(--accent); }
 .field output { color: var(--text); font: 500 13px var(--mono); }
 .field.inline { margin: 0; }
 select { background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; color: var(--text); }

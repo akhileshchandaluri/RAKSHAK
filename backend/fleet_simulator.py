@@ -178,8 +178,9 @@ class BuildingAgent:
 
 class FleetSimulator:
     def __init__(self, config=None, participation=1.0, seed=42, size=500, clinical_backup_minutes=0, inventory=None,
-                 campus=False, campus_ac_share=0.30):
+                 campus=False, campus_ac_share=0.30, campus_aufls_stage1=False):
         self.campus_enabled, self.campus_ac_share = campus, campus_ac_share
+        self.campus_aufls_stage1 = campus and campus_aufls_stage1
         self.cfg = config or GridConfig()
         self.participation, self.seed, self.size = participation, seed, size
         self.clinical_backup_minutes = clinical_backup_minutes
@@ -272,6 +273,11 @@ class FleetSimulator:
         self.ufls_feeder_tripped = [False] * 4
         self.stage_blocks = []
         remaining = [b for b in self.macro_fleet if b.b_type not in {"clinic", "cold_chain", "water_service", "campus"}]
+        if getattr(self, "campus_aufls_stage1", False):
+            # Declared assumption: campus blocks are served by the feeder assigned to AUFLS
+            # stage 1 and fill that stage's relief quota first.
+            remaining = [b for b in self.campus_buildings if b.devices.get("campus_base") and
+                         b.devices["campus_base"].tier != 0] + remaining
         for fraction in self.cfg.ufls_relief:
             group, watts = [], 0.0
             while remaining and watts < fraction * self.baseline_macro_w:

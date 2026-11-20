@@ -46,6 +46,7 @@ class ScenarioRequest(BaseModel):
     # RVCE campus twin (data/rvce/campus.json) added to the fleet when enabled.
     campus: bool = False
     campus_ac_share: float = Field(default=0.30, ge=0.0, le=0.8)
+    campus_aufls_stage1: bool = False   # assumption: campus blocks sit on the stage-1 AUFLS feeder
 
 
 class SimulationController:
@@ -64,7 +65,8 @@ class SimulationController:
         )
         self.fleet = FleetSimulator(cfg, self.scenario.participation, self.scenario.seed,
                                     clinical_backup_minutes=self.scenario.clinical_backup_minutes, inventory=self.inventory,
-                                    campus=self.scenario.campus, campus_ac_share=self.scenario.campus_ac_share)
+                                    campus=self.scenario.campus, campus_ac_share=self.scenario.campus_ac_share,
+                                    campus_aufls_stage1=self.scenario.campus_aufls_stage1)
         if self.scenario.dynamic_demand:
             self.fleet.configure_demand_cycles()
         self.enrolled_count = sum(building.enrolled for building in self.fleet.macro_fleet)
