@@ -1,0 +1,82 @@
+[
+  {
+    "assumed_base_mw": 200000,
+    "assumed_H_s": 4.0,
+    "fit_event": "Rajasthan \u00b7 15 May 2023",
+    "test_event": "Khavda \u00b7 13 May 2026",
+    "fitted_mechanical_gain": 0.169,
+    "fit_nadir_error_hz": 0.0,
+    "test_nadir_error_hz": 0.004,
+    "default_gain_test_error_hz": 0.317
+  },
+  {
+    "assumed_base_mw": 200000,
+    "assumed_H_s": 4.0,
+    "fit_event": "Khavda \u00b7 13 May 2026",
+    "test_event": "Rajasthan \u00b7 15 May 2023",
+    "fitted_mechanical_gain": 0.163,
+    "fit_nadir_error_hz": 0.0,
+    "test_nadir_error_hz": -0.001,
+    "default_gain_test_error_hz": 0.387
+  },
+  {
+    "assumed_base_mw": 200000,
+    "assumed_H_s": 5.0,
+    "fit_event": "Rajasthan \u00b7 15 May 2023",
+    "test_event": "Khavda \u00b7 13 May 2026",
+    "fitted_mechanical_gain": 0.155,
+    "fit_nadir_error_hz": 0.0,
+    "test_nadir_error_hz": 0.004,
+    "default_gain_test_error_hz": 0.326
+  },
+  {
+    "assumed_base_mw": 200000,
+    "assumed_H_s": 5.0,
+    "fit_event": "Khavda \u00b7 13 May 2026",
+    "test_event": "Rajasthan \u00b7 15 May 2023",
+    "fitted_mechanical_gain": 0.02,
+    "fit_nadir_error_hz": 0.0,
+    "test_nadir_error_hz": -0.006,
+    "default_gain_test_error_hz": 0.394
+  },
+  {
+    "assumed_base_mw": 250000,
+    "assumed_H_s": 4.0,
+    "fit_event": "Rajasthan \u00b7 15 May 2023",
+    "test_event": "Khavda \u00b7 13 May 2026",
+    "fitted_mechanical_gain": 0.108,
+    "fit_nadir_error_hz": 0.0,
+    "test_nadir_error_hz": 0.002,
+    "default_gain_test_error_hz": 0.365
+  },
+  {
+    "assumed_base_mw": 250000,
+    "assumed_H_s": 4.0,
+    "fit_event": "Khavda \u00b7 13 May 2026",
+    "test_event": "Rajasthan \u00b7 15 May 2023",
+    "fitted_mechanical_gain": 0.02,
+    "fit_nadir_error_hz": 0.0,
+    "test_nadir_error_hz": -0.007,
+    "default_gain_test_error_hz": 0.425
+  },
+  {
+    "assumed_base_mw": 250000,
+    "assumed_H_s": 5.0,
+    "fit_event": "Rajasthan \u00b7 15 May 2023",
+    "test_event": "Khavda \u00b7 13 May 2026",
+    "fitted_mechanical_gain": 0.099,
+    "fit_nadir_error_hz": 0.0,
+    "test_nadir_error_hz": 0.006,
+    "default_gain_test_error_hz": 0.373
+  },
+  {
+    "assumed_base_mw": 250000,
+    "assumed_H_s": 5.0,
+    "fit_event": "Khavda \u00b7 13 May 2026",
+    "test_event": "Rajasthan \u00b7 15 May 2023",
+    "fitted_mechanical_gain": 0.02,
+    "fit_nadir_error_hz": 0.004,
+    "test_nadir_error_hz": -0.007,
+    "default_gain_test_error_hz": 0.431
+  }
+]

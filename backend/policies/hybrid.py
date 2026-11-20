@@ -26,7 +26,7 @@ import numpy as np
 from nadir_predictor import SFRObserver
 from policies.np_mrd import NadirPredictivePolicy
 
-LEVELS_PU = tuple(round(0.04 + 0.02 * k, 2) for k in range(14))   # 0.04 ... 0.30
+LEVELS_PU = tuple(round(0.01 * k, 2) for k in range(1, 31))   # 0.01 ... 0.30
 
 
 class HybridPolicy(NadirPredictivePolicy):

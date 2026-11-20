@@ -31,6 +31,7 @@ class ScenarioRequest(BaseModel):
     clinical_backup_minutes: float = Field(default=2, ge=0, le=30)
     dynamic_demand: bool = False
     plant: Literal["sfr_reheat", "two_lag"] = "sfr_reheat"
+    mechanical_gain: float = Field(default=0.95, ge=0.01, le=1.0)   # K_m, Anderson & Mirheydar
     # NP-MRD settings (see policies/np_mrd.py)
     margin_hz: float = Field(default=0.05, ge=0.0, le=0.5)
     actuation_delay_s: float = Field(default=0.0, ge=0.0, le=5.0)
@@ -52,7 +53,7 @@ class SimulationController:
     def reset(self, scenario=None):
         self.scenario = scenario or self.scenario
         cfg = GridConfig(H=self.scenario.grid_inertia_h, threshold_smart_shed=self.scenario.shed_threshold,
-                         plant=self.scenario.plant)
+                         plant=self.scenario.plant, mechanical_gain=self.scenario.mechanical_gain)
         self.grid = GridEngine(cfg)
         self.grid.reset(
             loss=self.scenario.generation_loss, t_rec=self.scenario.t_recover,

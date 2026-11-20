@@ -15,8 +15,11 @@ Decision rule, every dispatch interval:
    (Kellerer, Pferschy, Pisinger, "Knapsack Problems", Springer 2004) solved by
    HiGHS through ``scipy.optimize.milp``. The objective is lexicographic:
    first minimise the number of customers newly interrupted (the customer count
-   underlying SAIFI, IEEE Std 1366-2022), then prefer appliances with the most
-   thermal or charging slack (priority stack, Lu 2012; least laxity, Xu et al. 2016).
+   underlying SAIFI, IEEE Std 1366-2022); then minimise the guaranteed deferred energy
+   P x L, where L is the appliance's minimum off time (compressor restart lockout),
+   an exact lower bound on the energy a curtailment defers; then prefer appliances
+   with the most thermal or charging slack (priority stack, Lu 2012; least laxity,
+   Xu et al. 2016).
 5. Restore curtailed appliances when the predicted minimum frequency including the
    restart pickup (rated power x inrush ratio, conservatively held) stays above the
    protection target plus a hysteresis. Appliances that have left their comfort
@@ -156,9 +159,13 @@ class NadirPredictivePolicy(DispatchPolicy):
         m = len(households)
         risk = np.array([d.thermal.comfort_risk(now) if getattr(d, "thermal", None) else 0.5
                          for _, d in candidates])
-        epsilon = 1.0 / (n + 1)
+        locked = np.array([d.base_w * d.lockout_duration for _, d in candidates])
+        locked = locked / locked.max() if locked.max() > 0 else locked
+        # Strict lexicographic weights: each lower objective sums to < one unit of the next.
+        e1 = 1.0 / (n + 1)
+        e2 = e1 / (n + 1)
         household_cost = np.array([0.0 if h in self.event_households else 1.0 for h in households])
-        c = np.concatenate([epsilon * risk, household_cost])
+        c = np.concatenate([e1 * locked + e2 * risk, household_cost])
         power = np.array([d.base_w for _, d in candidates])
         rows = [np.concatenate([power, np.zeros(m)])]
         lower, upper = [target_w], [np.inf]
@@ -174,7 +181,7 @@ class NadirPredictivePolicy(DispatchPolicy):
             return [candidates[i] for i in range(n) if result.x[i] > 0.5]
         # Fallback: greedy by power density then slack.
         chosen, total = [], 0.0
-        for i in sorted(range(n), key=lambda i: (-power[i], risk[i])):
+        for i in sorted(range(n), key=lambda i: (-power[i], locked[i], risk[i])):
             if total >= target_w:
                 break
             chosen.append(candidates[i])
