@@ -60,8 +60,17 @@ function load(replays) {
     x0: 0, x1: main.duration, y0: Math.min(49.3, ...main.frames.map((f) => f.f)) - 0.02,
     y1: Math.max(50.1, ...main.frames.map((f) => f.f)) + 0.02, color: c.pred,
     refs: [{ y: 49.4, color: c.open }] });
-  $("tl-markers").innerHTML = main.data.decisions.map((d, k) =>
-    `<button class="${d.kind}" style="left:${(d.t / main.duration) * 100}%" data-k="${k}" title="${KIND_LABEL[d.kind] || d.kind} at ${d.t.toFixed(1)} s"></button>`).join("");
+  // Merge decisions that would sit on top of each other into one marker.
+  const groups = [];
+  main.data.decisions.forEach((d, k) => {
+    const last = groups.at(-1);
+    if (last && (d.t - main.data.decisions[last[0]].t) / main.duration < 0.008) last.push(k); else groups.push([k]);
+  });
+  $("tl-markers").innerHTML = groups.map((g) => {
+    const d = main.data.decisions[g[0]];
+    const title = g.map((k) => `${KIND_LABEL[main.data.decisions[k].kind]} at ${main.data.decisions[k].t.toFixed(1)} s`).join("\n");
+    return `<button class="${d.kind} ${g.length > 1 ? "multi" : ""}" style="left:${(d.t / main.duration) * 100}%" data-k="${g[0]}" title="${title}"></button>`;
+  }).join("");
   $("tl-markers").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
     const d = main.data.decisions[+b.dataset.k];
     player.pause(); player.seek(d.t + 0.5); openDecision(d, main);
@@ -110,10 +119,15 @@ function placeLabels() {
     const text = s === 2 ? `<b>Feeder cut</b> · Block ${b.id}` : s === 1 ? `<b>AC paused</b> · Block ${b.id}` : `Block ${b.id} · ${kw.toFixed(0)} kW`;
     items.push({ b, cls: s === 2 ? "open" : s === 1 ? "curtailed" : "", sel, text });
   }
+  // Simple collision avoidance: nudge a label upwards until it clears those already placed.
+  const placed = [];
   host.innerHTML = items.slice(0, 14).map(({ b, cls, sel, text }) => {
     const p = S.world.screen(b.centroid[0], b.centroid[1], b.height_m + 4);
     if (!p.visible) return "";
-    return `<div class="label ${cls} ${sel ? "selected" : ""}" data-id="${b.id}" style="left:${p.x}px;top:${p.y}px">${text}</div>`;
+    let y = p.y;
+    for (let guard = 0; guard < 6 && placed.some((q) => Math.abs(q.x - p.x) < 150 && Math.abs(q.y - y) < 26); guard++) y -= 28;
+    placed.push({ x: p.x, y });
+    return `<div class="label ${cls} ${sel ? "selected" : ""}" data-id="${b.id}" style="left:${p.x}px;top:${y}px">${text}</div>`;
   }).join("");
   host.querySelectorAll(".label").forEach((el) => el.addEventListener("click", () => {
     const b = S.campus.buildings.find((x) => x.id === +el.dataset.id);
@@ -164,6 +178,11 @@ function renderBuilding(hit) {
 // ---------------------------------------------------------------- explainer
 function openDecision(d, r) {
   S.decisionShown = d;
+  S.decisionReplay = r;
+  const list = r.data.decisions, k = list.indexOf(d);
+  $("ex-count").textContent = `${k + 1} / ${list.length}`;
+  $("ex-prev").disabled = k <= 0;
+  $("ex-next").disabled = k >= list.length - 1;
   $("building-card").hidden = true;
   $("explainer").hidden = false;
   renderDecision($("ex-body"), $("ex-title"), d, r, S.campus);
@@ -175,6 +194,14 @@ function openDecision(d, r) {
   }
 }
 $("ex-close").addEventListener("click", () => { $("explainer").hidden = true; S.decisionShown = null; });
+for (const [id, step] of [["ex-prev", -1], ["ex-next", 1]]) {
+  $(id).addEventListener("click", () => {
+    const r = S.decisionReplay, list = r?.data.decisions;
+    if (!list) return;
+    const d = list[list.indexOf(S.decisionShown) + step];
+    if (d) { player.pause(); player.seek(d.t + 0.5); openDecision(d, r); }
+  });
+}
 
 // ---------------------------------------------------------------- story
 function kpiHtml(list) {
@@ -363,6 +390,7 @@ async function boot() {
   ]);
   S.campus = await fetchJSON("/api/campus");
   S.world = new World($("world"), S.campus);
+  window.__rakshak = S;   // inspection hook for automated browser checks
   S.world.onPick = (hit) => selectBuilding(hit);
   S.world.onFrame = placeLabels;
   S.world.flyTo({ target: [70, -20], distance: 760, polar: 0.92, azimuth: -0.72, duration: 0.01 });

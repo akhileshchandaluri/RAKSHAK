@@ -58,7 +58,7 @@ export const SCENES = [
   {
     id: "npmrd", step: "Rakshak",
     title: "Predict the dip, then act with the minimum",
-    replay: "npmrd", from: 4, to: 5.6, openFirstDecision: true,
+    replay: "npmrd", from: 4, to: 7, openFirstDecision: true,
     camera: CLOSE_VIEW,
     kpis: (c) => [["Customers paused", c.affected, c.affected <= 2 ? "good" : "warn"], ["AUFLS stages", c.stages, c.stages ? "bad" : "good"],
       ["Lowest frequency", `${c.fmin.toFixed(3)} Hz`, ""]],

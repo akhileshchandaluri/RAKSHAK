@@ -99,7 +99,13 @@
 
     <!-- Explainer -->
     <aside class="drawer" id="explainer" hidden aria-label="Decision explainer">
-      <header><h2 id="ex-title">Decision</h2><button class="icon-btn" id="ex-close" aria-label="Close">✕</button></header>
+      <header><h2 id="ex-title">Decision</h2>
+        <div class="ex-nav">
+          <button class="icon-btn" id="ex-prev" aria-label="Previous decision" title="Previous decision">‹</button>
+          <span id="ex-count" class="muted"></span>
+          <button class="icon-btn" id="ex-next" aria-label="Next decision" title="Next decision">›</button>
+          <button class="icon-btn" id="ex-close" aria-label="Close">✕</button>
+        </div></header>
       <div id="ex-body"></div>
     </aside>
 

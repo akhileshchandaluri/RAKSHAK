@@ -148,6 +148,9 @@ input[type="range"] { accent-color: var(--accent); }
 .drawer { top: 16px; right: 16px; bottom: 16px; width: 440px; display: flex; flex-direction: column; }
 .drawer header { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 10px; border-bottom: 1px solid var(--line); }
 .drawer h2 { font-size: 16px; }
+.ex-nav { display: flex; align-items: center; gap: 6px; }
+.ex-nav .muted { font-size: 12px; min-width: 38px; text-align: center; }
+.tl-markers button.multi { width: 14px; height: 14px; margin-left: -7px; box-shadow: 0 0 0 2px var(--line); }
 #ex-body { padding: 14px 18px 20px; overflow: auto; }
 .ex-lede { margin: 0 0 12px; }
 .ex-step { display: grid; grid-template-columns: 26px 1fr; gap: 10px; margin: 14px 0; }

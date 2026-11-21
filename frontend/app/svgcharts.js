@@ -48,7 +48,7 @@ export function lineChart(host, { series, refs = [], marks = [], cursor = null, 
   }
   for (const v of xt.values) el("text", { x: X(v), y: height - pad.b + 16, "text-anchor": "middle" }, svg).textContent = fmt(v, xt.step);
   if (xLabel) el("text", { x: width - pad.r, y: height - 2, "text-anchor": "end", class: "axis-label" }, svg).textContent = xLabel;
-  if (yLabel) el("text", { x: 4, y: pad.t - 8, class: "axis-label" }, svg).textContent = yLabel;
+  if (yLabel) el("text", { x: pad.l - 6, y: pad.t + 4, "text-anchor": "end", class: "axis-label", dy: "-12" }, svg).textContent = yLabel;
   const clipId = "c" + Math.random().toString(36).slice(2);
   el("rect", { x: pad.l, y: pad.t, width: width - pad.l - pad.r, height: height - pad.t - pad.b }, el("clipPath", { id: clipId }, el("defs", {}, svg)));
   const plot = el("g", { "clip-path": `url(#${clipId})` }, svg);
