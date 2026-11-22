@@ -171,6 +171,8 @@ export class World {
     this.controls.maxPolarAngle = 1.42;
     this.controls.minDistance = 40;
     this.controls.maxDistance = 2200;
+    this.controls.autoRotateSpeed = 0.35;          // slow orbit on the opening scene shows depth
+    this.controls.addEventListener("start", () => { this.controls.autoRotate = false; });
     this.controls.target.set(60, 0, -40);
     this.camera.position.set(-420, 430, 520);
     this.tex = facadeTextures();
@@ -512,7 +514,9 @@ export class World {
     gltf.setDRACOLoader(draco);
     tiles.manager.addHandler(/\.(gltf|glb)$/g, gltf);
     const { lat, lon } = this.campus.origin;
-    tiles.setLatLonToYUp(lat * Math.PI / 180, lon * Math.PI / 180);   // X north, Y up, Z east
+    tiles.setLatLonToYUp(lat * Math.PI / 180, lon * Math.PI / 180);
+    tiles.errorTarget = 2;                         // finer tiles than the default 6 px (sharper buildings)
+    tiles.lruCache.maxBytesSize = 1.0 * 2 ** 30;   // X north, Y up, Z east
     this.tilesParent = new THREE.Group();
     this.tilesParent.rotation.y = Math.PI / 2;                          // -> X east, -Z north
     this.tilesParent.add(tiles.group);
@@ -566,15 +570,17 @@ export class World {
     const photo = this.view === "photoreal" && this.tiles;
     const s = mesh.userData.state ?? 0;
     if (!mesh.userData.overlay) {
-      mesh.userData.overlay = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0 });
+      // Drawn over the photogrammetry (which is often taller than our massing) so states stay visible.
+      mesh.userData.overlay = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: false, opacity: 0 });
       mesh.userData.solid = mesh.material;
     }
-    if (!photo) { mesh.material = mesh.userData.solid; mesh.castShadow = true; return; }
+    if (!photo) { mesh.material = mesh.userData.solid; mesh.renderOrder = 0; mesh.castShadow = true; return; }
     const o = mesh.userData.overlay;
     const sel = this.selected === mesh.userData.building.id;
     o.color.set(s === 1 ? 0xffa21f : s === 2 ? 0xff3b30 : s === 3 ? 0xa78bfa : 0x5b9cf5);
     o.opacity = s === 1 || s === 2 ? 0.55 : s === 3 ? 0.45 : sel ? 0.4 : 0.0;
     mesh.material = o;
+    mesh.renderOrder = 10;
     mesh.castShadow = false;
   }
 

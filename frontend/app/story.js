@@ -1,8 +1,9 @@
 // Guided demonstration. Each scene names the replay(s) it plays, the time window, the
 // camera, and the caption. Numbers in captions are read from the replays at run time.
 
-const CAMPUS_VIEW = { target: [70, -20], distance: 760, polar: 0.92, azimuth: -0.72 };
-const CLOSE_VIEW = { target: [110, -40], distance: 430, polar: 0.98, azimuth: -0.45 };
+// Oblique, low views so heights read as 3D (a near-vertical view looks like a flat photo).
+const CAMPUS_VIEW = { target: [60, -40], distance: 600, polar: 1.12, azimuth: -0.72 };
+const CLOSE_VIEW = { target: [40, -10], distance: 400, polar: 1.12, azimuth: -0.5 };
 
 export const SCENES = [
   {

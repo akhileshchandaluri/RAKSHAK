@@ -140,7 +140,7 @@ function placeLabels() {
 function selectBuilding(hit) {
   S.selected = hit;
   S.world.select(hit?.kind === "campus" ? hit.building.id : null);
-  if (hit?.kind === "campus") S.world.flyTo({ target: hit.building.centroid, distance: 300, polar: 1.0, azimuth: -0.4, duration: 1.1 });
+  if (hit?.kind === "campus") S.world.flyTo({ target: hit.building.centroid, distance: 230, polar: 1.2, azimuth: -0.4, duration: 1.1 });
   renderBuilding(hit);
 }
 
@@ -193,7 +193,7 @@ function openDecision(d, r) {
   const meta = first != null ? r.data.buildings[first] : null;
   if (meta?.campus_id != null) {
     const b = S.campus.buildings.find((x) => x.id === meta.campus_id);
-    if (b) S.world.flyTo({ target: b.centroid, distance: 340, polar: 0.98, azimuth: -0.35, duration: 1.2 });
+    if (b) S.world.flyTo({ target: b.centroid, distance: 260, polar: 1.2, azimuth: -0.35, duration: 1.2 });
   }
 }
 $("ex-close").addEventListener("click", () => { $("explainer").hidden = true; S.decisionShown = null; });
@@ -223,6 +223,7 @@ async function showScene(i) {
   S.sceneIndex = Math.max(0, Math.min(SCENES.length - 1, i));
   const scene = SCENES[S.sceneIndex];
   $("explainer").hidden = true;
+  S.world.controls.autoRotate = S.sceneIndex === 0;
   $("story-step").textContent = `${S.sceneIndex + 1} / ${SCENES.length} · ${scene.step}`;
   $("story-title").textContent = scene.title;
   $("story-prev").disabled = S.sceneIndex === 0;
@@ -347,6 +348,7 @@ function renderExploreKpis(t) {
 async function route() {
   const mode = (location.hash || "#story").slice(1);
   S.mode = ["story", "compare", "explore", "results", "methods"].includes(mode) ? mode : "story";
+  if (S.mode !== "story" && S.world) S.world.controls.autoRotate = false;
   document.querySelectorAll(".modes a").forEach((a) => { if (a.dataset.mode === S.mode) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   const page = S.mode === "results" || S.mode === "methods";
   document.body.classList.toggle("page-mode", page);
@@ -382,7 +384,7 @@ $("theme").addEventListener("click", () => {
 // ---------------------------------------------------------------- tools
 function clock(h) { const hh = Math.floor(h), mm = Math.round((h - hh) * 60); return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`; }
 $("tod").addEventListener("input", () => { $("o-tod").textContent = clock(+$("tod").value); S.world?.setTimeOfDay(+$("tod").value); });
-$("cam-orbit").addEventListener("click", () => S.world.flyTo({ target: [70, -20], distance: 760, polar: 0.92, azimuth: -0.72 }));
+$("cam-orbit").addEventListener("click", () => S.world.flyTo({ target: [60, -40], distance: 600, polar: 1.12, azimuth: -0.72 }));
 $("cam-plan").addEventListener("click", () => S.world.flyTo({ target: [70, -20], distance: 980, polar: 0.05, azimuth: 0 }));
 
 // ---------------------------------------------------------------- map data
@@ -435,7 +437,7 @@ async function boot() {
   if (new URLSearchParams(location.search).has("debug")) window.__rakshak = S;   // inspection hook for browser tests
   S.world.onPick = (hit) => selectBuilding(hit);
   S.world.onFrame = placeLabels;
-  S.world.flyTo({ target: [70, -20], distance: 760, polar: 0.92, azimuth: -0.72, duration: 0.01 });
+  S.world.flyTo({ target: [60, -40], distance: 600, polar: 1.12, azimuth: -0.72, duration: 0.01 });
   await route();
   initMapData();
 }
