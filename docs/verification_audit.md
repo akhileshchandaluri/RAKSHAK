@@ -1,5 +1,7 @@
 # Rakshak verification audit
 
+> **Historical (Phase 2).** This describes the first version. For the current system see [whats_new.md](whats_new.md) and [methods.md](methods.md).
+
 The audit covers Rakshak's Python simulation, API, inventory and serial bridge, the browser views and controls, benchmark runners, and ESP32 reference source. The bundled Three.js distribution and the separate comparison repository are third-party inputs.
 
 ## Defects corrected

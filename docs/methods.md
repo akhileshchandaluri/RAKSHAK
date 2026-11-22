@@ -22,7 +22,12 @@ This file lists every model in Rakshak v2, the source it comes from, and what is
 | Normal frequency band 49.90–50.05 Hz | UI, restoration | CERC IEGC |
 | Fairness | `simulation.service_metrics` | Jain, Chiu, Hawe, DEC-TR-301, 1984 |
 | Building energy | `tools/build_campus.py` | BEE/UNDP-GEF *Energy benchmarks for Commercial Buildings*, Moderate zone |
-| Building footprints | `data/rvce/source/` | Microsoft Global ML Building Footprints, release 2026-02-03, ODbL 1.0 |
+| Campus outline, names, floors, roads, rail, river | `data/rvce/source/osm_rvce_area.json` | OpenStreetMap contributors, ODbL 1.0 (campus way 55685638) |
+| Campus layout check | `data/rvce/source/keyplan_registration.json` | ACE Group Architects key plan, RVCE NAAC SSR Criterion 4.1.1 |
+| Unmapped footprints | `data/rvce/source/` | Microsoft Global ML Building Footprints, release 2026-02-03, ODbL 1.0 |
+| Documented campus facts | `data/rvce/facts.json` | RVCE NAAC SSR (built-up 67,721 m², hostels 38,659 m²), BESCOM SRTPV report (500 kW, 8 buildings), RVCE website |
+| Photoreal scene | `frontend/app/world.js` | Google Photorealistic 3D Tiles via Cesium ion (asset 2275207); not stored |
+| Satellite ground | `backend/main.py` `/api/imagery` | Esri World Imagery (Maxar, Earthstar Geographics); streamed, not stored |
 | Sun position | `frontend/app/solar.js` | NOAA GML general solar position equations; azimuth by Meeus, eq. 13.5 |
 
 ## Declared assumptions (swept or flagged)
@@ -32,7 +37,7 @@ This file lists every model in Rakshak v2, the source it comes from, and what is
 - Protection margin 0.05 Hz above AUFLS stage 1 (swept in E3); restore hysteresis 0.05 Hz.
 - Hybrid ladder 0.01–0.30 pu in 0.01 steps; 0.25 s local detection; arming resent every 1 s, re-planned every 60 s.
 - Communication: latency, jitter and loss are abstract parameters (E2), not a model of a specific network.
-- Campus: membership, names, uses and floor counts are defaults until verified; 3.5 m per floor; AC is 30 % of average demand; Mysore Road alignment is inferred from the elongated structure in the footprint data; streetlight spacing is illustrative.
+- Campus: floors not tagged in OSM use a per-use default; 3.5 m per floor; use is classified from the building name; energy floor area is scaled to the NAAC totals (factor about 0.54 for non-hostel RVCE buildings, 2.14 for hostels, because OSM floor tags undercount hostel storeys); AC is 30 % of average demand; streetlight spacing is illustrative.
 - Building demand uses annual averages; time of day changes lighting only.
 
 ## To verify before submission
@@ -42,17 +47,17 @@ This file lists every model in Rakshak v2, the source it comes from, and what is
 3. Page numbers of all journal references.
 4. BEE water-heater standby-loss figure used for the geyser time constant (`backend/thermal.py`).
 5. BEE default AC temperature notification (24 °C) reference.
-6. RVCE campus: building names, uses, floor counts, campus boundary, health centre and server rooms (`data/rvce/overrides.json`), and if possible metered annual kWh.
+6. RVCE campus: floor counts not tagged in OSM, health centre and server rooms (`data/rvce/overrides.json`), and if possible metered annual kWh to replace the benchmark.
 7. A systematic related-work search (IEEE Xplore, Scopus) for "nadir-constrained demand response", "AUFLS appliance", "pre-armed load shedding demand side", to confirm novelty claims.
 
 ## Overrides format
 
-`data/rvce/overrides.json` maps a footprint id (shown in the twin's inspector) to verified data:
+`data/rvce/overrides.json` maps a building key (`way/<id>`, `relation/<id>` or `msb/<n>`, stored as `key` in `campus.json`) to verified data:
 
 ```json
 {
-  "197": {"name": "Administrative Block", "use": "admin", "floors": 4, "campus": true},
-  "242": {"name": "CSE Department", "use": "academic", "floors": 5}
+  "way/132994721": {"name": "Administrative Block", "use": "admin", "floors": 4, "campus": true},
+  "msb/242": {"floors": 5}
 }
 ```
 

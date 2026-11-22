@@ -30,17 +30,22 @@ export function renderMethods(root) {
     <li>Pre-arming: structure of special protection schemes (Anderson and LeReverend, IEEE TPWRS 1996).</li>
     <li>Local relays baseline: Molina-García, Bouffard, Kirschen, IEEE TPWRS 2011.</li>
     <li>Room temperature: first-order thermal model with parameters of Mathieu, Koch, Callaway, IEEE TPWRS 2013.</li>
-    <li>Building footprints: Microsoft Global ML Building Footprints (ODbL). Building energy: BEE/UNDP-GEF benchmarks, Moderate zone (Institutes 129 kWh/m²/yr).</li>
+    <li>Campus outline, building names, floor counts, roads, metro line and river: OpenStreetMap contributors (ODbL). Checked against the ACE Group Architects campus key plan in RVCE's NAAC submission (Criterion 4.1.1), registered to satellite imagery.</li>
+    <li>Buildings OpenStreetMap does not map: Microsoft Global ML Building Footprints (ODbL).</li>
+    <li>Building energy: BEE/UNDP-GEF benchmarks, Moderate zone (Institutes 129, Hospitals 247 kWh/m²/yr), scaled so RVCE totals match the NAAC-reported built-up area (67,721 m²) and hostel area (38,659 m²).</li>
+    <li>Rooftop solar: 500 kW on the eight buildings named in RVCE's BESCOM SRTPV commissioning report, shared by roof area.</li>
+    <li>Photoreal view: Google Photorealistic 3D Tiles through Cesium ion. Model view ground: Esri World Imagery (Maxar, Earthstar Geographics).</li>
     <li>Sun position: NOAA Global Monitoring Laboratory equations; streetlights switch at civil twilight.</li>
   </ul>
 
   <h2>Assumptions</h2>
   <ul>
-    <li>Campus building names, uses and floor counts are defaults until confirmed; floors are 3.5 m.</li>
+    <li>Floor counts not tagged in OpenStreetMap use a default per building type; floors are 3.5 m. Building use is read from the name.</li>
+    <li>The OpenStreetMap outline covers the whole RV educational campus (about 49 acres); RVCE's own documents give 16.85 acres. Each building records its institution.</li>
     <li>Room AC is 30 % of each block's average demand. Demand uses annual averages; time of day changes lighting only.</li>
     <li>The 500 households are simulated and placed on the nearest real footprints.</li>
     <li>The option "campus on the AUFLS stage-1 feeder" is an assumption for the demonstration.</li>
-    <li>Trees and the road layout are illustrative; the road follows the elongated structure in the footprint data.</li>
+    <li>In the model view, trees are placed where the satellite image is green; streetlights are drawn every 25 m along campus roads (spacing illustrative).</li>
     <li>Single-area frequency; no voltage or power-flow constraints. No field trial.</li>
   </ul>
   <p><a href="evidence.html">Evidence register</a> · <a href="appliances.html">Appliance requests</a> · <a href="reviewer.html">Reviewer</a> · <a href="street.html">Original street view</a></p>

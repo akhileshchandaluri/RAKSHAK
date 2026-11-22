@@ -1,5 +1,7 @@
 # Comparison-project feature decisions
 
+> **Historical (Phase 2).** This describes the first version. For the current system see [whats_new.md](whats_new.md) and [methods.md](methods.md).
+
 | Capability | Original Rakshak revision | Decision |
 | --- | --- | --- |
 | Appliance state constraints | Minimum on/off time, lockout, consent and interruption-budget state | Adopted concept, implemented in shared Python engine |

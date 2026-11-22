@@ -1,5 +1,7 @@
 # Evidence and model decisions
 
+> **Historical (Phase 2).** This describes the first version. For the current system see [whats_new.md](whats_new.md) and [methods.md](methods.md).
+
 Rakshak is a reproducible **single-area, 50 Hz simulation** of flexible demand and protected circuits. The experiment asks whether the same contingency can be handled with less critical energy unserved and less restart pickup than a feeder-level benchmark. The policies, seed, eligibility, initial load and clinical backup assumptions are held constant when comparing restart strategies.
 
 | Decision | Evidence and interpretation |

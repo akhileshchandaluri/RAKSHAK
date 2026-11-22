@@ -1,5 +1,7 @@
 # EL demonstration sequence
 
+> **Historical (Phase 2).** This describes the first version. For the current system see [whats_new.md](whats_new.md) and [methods.md](methods.md).
+
 1. Start the server and show **LIVE SIMULATION**. Identify the 50 Hz reference, normal band and separate AUFLS/experimental DR thresholds. Open the evidence register.
 2. Select normal operation. Explain that protected priority does not mean an appliance continuously consumes its nameplate watts.
 3. Select generation loss and Compare All Modes. Compare reference AUFLS with the same AUFLS plus Rakshak. Both have identical backup and inventories. Describe actual metrics, including any unfavorable result.

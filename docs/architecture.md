@@ -1,5 +1,7 @@
 # Architecture
 
+> **Historical (Phase 2).** This describes the first version. For the current system see [whats_new.md](whats_new.md) and [methods.md](methods.md).
+
 The browser showcase and its four-mode comparison enable seeded appliance sessions on the 12 visible buildings. The other buildings supply steady background demand, and the published paired benchmark uses its original fixed-demand protocol. The accelerated sessions are illustrative and shared across policies. Unmanaged has no emergency dispatch. Reference AUFLS switches feeder blocks. Rakshak modes also dispatch enrolled flexible appliances. Independent facility backup and common outcome metrics are retained across modes.
 
 Browser controls → validated ScenarioRequest → per-WebSocket SimulationController → FleetSimulator + GridEngine → snapshots, electrical continuity, audit log and charts.

@@ -6,20 +6,20 @@ When a large generator trips, AUFLS opens whole feeders and interrupts everyone 
 
 ## Results at a glance
 
-All numbers come from `benchmarks/results/paper/summary.json`. The main comparison is 540 paired runs with the governor gain calibrated to Indian events.
+All numbers come from `benchmarks/results/paper/summary.json`. The main comparison is 1,350 paired runs (10 seeds) with the governor gain calibrated to Indian events.
 
 | Policy | Customers interrupted per event | AUFLS stages | Critical energy not served (Wh) |
 |---|---|---|---|
-| AUFLS only | 11.2 | 0.56 | 1.73 |
-| Original heuristic | 13.5 | 0 | 0 |
-| Edge relays | 12.3 | 0 | 0 |
+| AUFLS only | 11.1 | 0.56 | 1.73 |
+| Original heuristic | 12.8 | 0 | 0 |
+| Edge relays | 11.6 | 0 | 0 |
 | **NP-MRD** | **1.1** | **0** | **0** |
-| **Hybrid (pre-armed)** | **1.3** | **0** | **0** |
+| **Hybrid (pre-armed)** | **1.4** | **0** | **0** |
 
-- **NP-MRD against AUFLS only:** 10.1 fewer customers interrupted per event (95 % CI 8.3–12.0, Wilcoxon p ≈ 4 × 10⁻¹²).
+- **NP-MRD against AUFLS only:** 10.0 fewer customers interrupted per event (95 % CI 8.8–11.1, Wilcoxon p ≈ 4 × 10⁻²⁸).
 - **Communication:** with 2 s command latency, central NP-MRD operates one AUFLS stage. The pre-armed hybrid operated none in any tested latency and loss combination.
 - **Calibration:** the governor gain is fitted to the Rajasthan (2023) and Khavda (2026) events, leaving one event out each time. The test-event nadir error is at most 0.007 Hz; the textbook value is off by 0.32–0.43 Hz.
-- **Trade-offs reported:** with textbook governor response at 18 % loss, NP-MRD defers more energy than the heuristic. With a 30 % underestimate of inertia, AUFLS occasionally operates.
+- **Trade-offs reported:** with textbook governor response at 18 % loss, NP-MRD defers more energy than the heuristic. With a 30 % underestimate of inertia, AUFLS operated in 2 of 10 seeds.
 
 ## What is new, and what is not
 
@@ -42,12 +42,29 @@ python -m pip install -r backend/requirements.txt
 python run_sim.py
 ```
 
-Then open http://127.0.0.1:8000. The landing page is the campus twin, with four views:
+Then open http://127.0.0.1:8000. The app has five views:
 
-- **Campus twin:** RVCE footprints in 3D, live building state, time-of-day sun and streetlights, and a building inspector.
-- **Grid console:** frequency against the AUFLS thresholds, the predicted nadir, and an audit of every dispatch decision.
-- **Experiment lab:** the paper's results and the calibration table.
-- **Methods:** sources and assumptions.
+- **Story:** a seven-step guided demonstration: the twin, a generator trip, AUFLS cutting feeders, the fixed-threshold rule, Rakshak's predictive relief, the pre-armed hybrid under bad communication, and the evidence.
+- **Compare:** two policies replayed side by side on the same event, with a frequency chart and outcome table.
+- **Explore:** run your own scenario (policy, event size, inertia, participation, latency, packet loss).
+- **Results:** the paper's experiments and calibration.
+- **Methods:** every model's source and assumptions.
+
+Every replay records the controller's decisions. Click a marker on the timeline to open the decision explainer: what was measured, what was predicted, how much relief was needed, and why those appliances were chosen.
+
+The 3D scene has two looks, switchable from the **Photoreal / Model** chip:
+
+- **Photoreal:** Google Photorealistic 3D Tiles (via Cesium ion), with the simulation state drawn as translucent colours on the real buildings.
+- **Model:** our own building models on Esri World Imagery, with roads, the metro viaduct and the Vrishabhavati river from OpenStreetMap. This view needs no 3D-tile access.
+
+Both online layers need keys on the server, never in the browser bundle:
+
+```bash
+export RAKSHAK_CESIUM_TOKEN=...   # free Cesium ion Community token
+export RAKSHAK_ARCGIS_KEY=...     # free ArcGIS Location Platform key (basemaps)
+```
+
+Without them, or offline, the twin falls back to the drawn model.
 
 The original street view is at `/street.html`. The appliance request and review pages are at `/appliances.html` and `/reviewer.html`; the server prints the reviewer credential on start.
 
@@ -77,9 +94,18 @@ python -B paper/figures.py
 
 ## Campus data
 
-- **Footprints:** Microsoft Global ML Building Footprints (ODbL), filtered around RVCE.
-- **Energy:** floor area × BEE benchmark EPI for the Moderate climate zone.
-- **Unverified defaults:** names, uses, floor counts and campus membership are marked "unverified" until confirmed in `data/rvce/overrides.json`. Then run `python tools/build_campus.py`.
+`python tools/build_campus.py` rebuilds `data/rvce/campus.json`. Sources, in precedence order:
+
+1. `data/rvce/overrides.json`: corrections you confirm on campus.
+2. **OpenStreetMap** (ODbL): the campus outline, 51 named buildings, floor counts where tagged, roads, the metro line and the river. This agrees with the architects' campus key plan in RVCE's NAAC submission, registered to satellite imagery (`data/rvce/source/keyplan_registration.json`).
+3. **Microsoft Global ML Building Footprints** (ODbL): buildings that OSM does not map.
+
+Documented facts in `data/rvce/facts.json`, each with its source URL:
+
+- **Energy:** floor area × BEE benchmark EPI for the Moderate climate zone, scaled so RVCE totals match the NAAC-reported built-up area (67,721 m²) and hostel area (38,659 m²).
+- **Solar:** the 500 kW rooftop PV is placed on the eight buildings named in the BESCOM commissioning report, shared by roof area.
+
+The OSM outline covers the whole RV educational campus (about 49 acres, including RV University and other RV institutions). RVCE's own documents give 16.85 acres; each building carries its institution.
 
 ## Repository
 
@@ -103,7 +129,7 @@ python -B paper/figures.py
 - **Simplified inputs:** communication is an abstraction, and campus loads are benchmark estimates.
 - **No field trial.** Results describe the model, not RVCE or a utility network.
 
-Earlier documents in `docs/` (architecture, model evidence, verification audit) describe the first version and are kept for history.
+[docs/whats_new.md](docs/whats_new.md) explains what changed since Phase 2, the novelty, a demo talk track and likely evaluator questions. Earlier documents in `docs/` describe the first version and are kept for history.
 
 ## Credits
 

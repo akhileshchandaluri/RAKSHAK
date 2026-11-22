@@ -147,7 +147,15 @@ class CampusTests(unittest.TestCase):
         self.assertEqual(len(sim.fleet.campus_buildings), len(campus))
         for agent in sim.fleet.campus_buildings:
             b = agent.campus
-            self.assertAlmostEqual(b["annual_kwh"], b["floor_area_m2"] * b["epi_kwh_m2_yr"], delta=1e-4 * b["annual_kwh"] + 10)
+            area = b.get("energy_floor_area_m2", b["floor_area_m2"])
+            self.assertAlmostEqual(b["annual_kwh"], area * b["epi_kwh_m2_yr"], delta=1e-4 * b["annual_kwh"] + 10)
             total = sum(d.base_w for d in agent.devices.values())
             self.assertAlmostEqual(total / 1000, b["average_kw"], delta=0.01)
-        self.assertFalse(any(b.get("verified") for b in campus))   # defaults stay flagged until confirmed
+        # Energy-bearing area is calibrated to the documented RVCE totals (NAAC SSR).
+        rvce = [b for b in campus if b.get("institution") == "RVCE"]
+        self.assertAlmostEqual(sum(b.get("energy_floor_area_m2", 0) for b in rvce if b["use"] != "hostel"), 67721, delta=5)
+        self.assertAlmostEqual(sum(b.get("energy_floor_area_m2", 0) for b in rvce if b["use"] == "hostel"), 38659, delta=5)
+        # The 500 kW rooftop PV sits on the eight buildings named in the BESCOM report.
+        hosts = [b for b in campus if b.get("solar_kwp")]
+        self.assertEqual(len(hosts), 8)
+        self.assertAlmostEqual(sum(b["solar_kwp"] for b in hosts), 500, delta=0.5)

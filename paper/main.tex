@@ -90,7 +90,7 @@ Before any event the controller computes, with the same predictor from equilibri
 Public event reports give the loss, the pre-event frequency and the nadir but not the system base or inertia. We therefore sweep the base (200 and 250~GW) and $H$ (4 and 5~s), fit $K_m$ on one event by root-finding on the simulated nadir (AUFLS active, initial frequency as reported), and test on the other event. Test-event nadir errors are at most \CalTestErrMax~Hz; textbook $K_m=0.95$ errs by \CalDefaultErrMin--\CalDefaultErrMax~Hz. Fitted gains are at most \CalGainMax. Because both observed nadirs were arrested by AUFLS near 49.4~Hz, the data bound the effective gain from above rather than identify it; we use $K_m=\CalibratedGain$ and report textbook parameters as a sensitivity.
 
 \section{Experiments}
-Each run simulates 270~s with a step loss of generation at 5~s and recovery from 45~s over 30~s. Main comparison: five policies (AUFLS only, the original frequency-threshold heuristic, decentralised edge relays~\cite{molina2011}, NP-MRD, hybrid) $\times$ $H\in\{5,3,2\}$~s $\times$ loss $\in\{2,3.5,5\}$\% $\times$ enrollment $\in\{50,100\}$\% $\times$ \SeedsMain{} seeds, paired on seed. Seeds vary enrollment, ownership and use; intervals describe modelled variation only.
+Each run simulates 270~s with a step loss of generation at 5~s and recovery from 45~s over 30~s. Main comparison: five policies (AUFLS only, the original frequency-threshold heuristic, decentralised edge relays~\cite{molina2011}, NP-MRD, hybrid) $\times$ $H\in\{5,3,2\}$~s $\times$ loss $\in\{2,3.5,5\}$\% $\times$ enrollment $\in\{25,50,100\}$\% $\times$ \SeedsMain{} seeds, paired on seed. Seeds vary enrollment, ownership and use; intervals describe modelled variation only.
 
 \begin{figure}[t]
 \centering
@@ -139,7 +139,7 @@ Fig.~\ref{fig:comm} varies command latency (0--2~s, jitter of half the latency) 
 \end{figure*}
 
 \subsection{Margin and inertia-estimate error}
-Fig.~\ref{fig:margin} shows the trade-off between the protection margin $m$ and customers interrupted: a larger margin raises the nadir at the cost of more interrupted customers. With the operator's inertia estimate 15--30\% too high, NP-MRD still avoided AUFLS; with it 30\% too low, the controller under-predicted the decline and AUFLS operated in one of six seeds, so inertia estimation (e.g.~\cite{inoue1997}) is a prerequisite for deployment.
+Fig.~\ref{fig:margin} shows the trade-off between the protection margin $m$ and customers interrupted: a larger margin raises the nadir at the cost of more interrupted customers. With the operator's inertia estimate 15--30\% too high, NP-MRD still avoided AUFLS; with it 30\% too low, the controller under-predicted the decline and AUFLS operated in two of ten seeds, so inertia estimation (e.g.~\cite{inoue1997}) is a prerequisite for deployment.
 
 \subsection{Sensitivity: textbook governor response}
 With $K_m=0.95$ and larger contingencies (10\% and 18\%), NP-MRD and the hybrid again avoided AUFLS with several times fewer customers than the heuristic. At 18\% loss, however, they deferred more total energy than the heuristic, because the knapsack prefers few large appliances (EV chargers) that remain curtailed until generation recovers. Customer count and deferred energy are therefore competing objectives; the lexicographic order is a design choice that a utility could reverse.
