@@ -1,0 +1,41 @@
+{
+  "campus": {
+    "rvce_area_acres": 16.85,
+    "built_up_m2": 67721,
+    "source": "RVCE NAAC Self Study Report, 28 June 2024, p. 12 (Location and Area of Campus)",
+    "url": "https://rvce.edu.in/wp-content/uploads/2025/09/Final-submitted-SSR_28-June-2024_latest.pdf"
+  },
+  "supply": {
+    "consumer": "BESCOM HT consumer, tariff category HT2C2, bi-directional ABT meter (L&T)",
+    "source": "BESCOM report of commissioning and synchronising of SRTPV system (NAAC Cr. 7.1.2 File 1)",
+    "url": "https://rvce.edu.in/wp-content/uploads/2025/11/Cr_7.1.2_File_1_Solar_Energy_MoU_with_BESCOM.pdf"
+  },
+  "solar": {
+    "capacity_kw": 500,
+    "inverters": "Delta grid-tied inverters (50, 30 and 20 kW units)",
+    "buildings": ["Admission block", "Electronics and Communication", "Electrical and Electronics", "Mechanical",
+                  "Biotechnology", "Aerospace", "Diamond Jubilee hostel", "Sir M V hostel"],
+    "buildings_osm_name_patterns": ["Administration Building", "^Electronics and Communication$", "Electrical and Electronics",
+                                    "^Mechanical Engineering$", "^Biotechnology$", "Aerospace and Information", "Diamond Jubli",
+                                    "Sir M V Hostel"],
+    "source": "BESCOM SRTPV commissioning report; NAAC Cr. 7.1.2 File 4 (solar facility, geotagged)",
+    "url": "https://rvce.edu.in/wp-content/uploads/2025/11/Cr_7.1.2_File_4_Solar_Power_Facility_in_various_departments_Geotagged_Photos.pdf"
+  },
+  "backup": {
+    "generators_kva": 980,
+    "planned_kva": 2250,
+    "note": "Two generators totalling 980 kVA with UPS; three more of 750 kVA each planned",
+    "source": "RVCE NAAC Self Study Report 2024, Computing / ICT facility"
+  },
+  "hostels": {
+    "boys": {"blocks": ["Chamundi", "Cauvery", "Cauvery Annex", "Visvesvaraya", "Krishna"], "rooms": 1185, "area_m2": 38659.11, "capacity": 1450},
+    "girls_on_campus": {"block": "Diamond Jubilee", "rooms": 95, "capacity": 285},
+    "source": "RVCE NAAC Self Study Report 2024; rvce.edu.in/facilities/hostel"
+  },
+  "other": {
+    "library_m2": 2254, "auditorium_m2": 570, "auditorium_seats": 330, "lifts": 9,
+    "food_court": "Cafe Mingos, two floors, 1000+ seats",
+    "data_centre": "11 servers + 1 HPC server",
+    "source": "RVCE NAAC Self Study Report 2024; rvce.edu.in/facilities"
+  }
+}

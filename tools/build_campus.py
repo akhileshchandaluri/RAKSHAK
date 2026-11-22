@@ -1,148 +1,250 @@
-"""Build data/rvce/campus.json from source footprints and declared assumptions.
+"""Build data/rvce/campus.json from verified sources.
 
-Inputs
-  data/rvce/source/microsoft_buildings_rvce_area.geojson
-      Microsoft Global ML Building Footprints (release 2026-02-03, quadkey 123303312),
-      filtered to the RVCE neighbourhood. Licence: ODbL 1.0. Footprints are
-      machine-detected from imagery; heights are not provided for this region (-1).
-  data/rvce/overrides.json  (optional, hand-maintained)
-      Verified names, uses, floor counts, campus membership per footprint id.
-      Anything listed there replaces the defaults below and is marked verified.
+Sources, in order of precedence
+  1. data/rvce/overrides.json          values confirmed by the project team (optional)
+  2. OpenStreetMap (data/rvce/source/osm_rvce_area.json, ODbL 1.0, (c) OpenStreetMap
+     contributors): campus outline (way 55685638), named buildings with
+     building:levels, roads, paths, the Mysuru-Bengaluru metro line, the
+     Vrishabhavati river.
+  3. Microsoft Global ML Building Footprints (ODbL): buildings OSM does not map.
+  4. RVCE documents (data/rvce/facts.json): built-up area, hostel capacities,
+     rooftop solar (500 kW, eight named buildings), backup generators, HT supply.
+  5. Declared assumptions, marked "assumed" per field: floor height 3.5 m,
+     default floors where OSM has none, BEE benchmark energy intensity by use.
 
-Defaults (declared assumptions, all marked "verified": false in the output)
-  * Campus membership: footprints south-east of the Mysore Road corridor and within
-    260 m of RVCE's published coordinates (12.9239 N, 77.4997 E, Wikipedia infobox).
-  * Floors: 3 for footprints of 300 m2 or more, 2 otherwise. Floor-to-floor height
-    3.5 m (above the 2.75 m minimum habitable height of NBC 2016 Part 3).
-  * Use: "academic" (BEE "Institutes"), unless overridden.
-  * Annual energy = floor area x EPI, with EPI for the Moderate climate zone (Bengaluru)
-    from BEE / UNDP-GEF "Energy benchmarks for Commercial Buildings":
-    Institutes 129, Hospitals 247, Office (<50 % AC) 94 kWh/m2/yr.
-    Hostels use the Office (<50 % AC) value as the closest non-AC benchmark (proxy).
-  * Average demand = annual energy / 8760 h.
-  * Local coordinates: equirectangular projection about the published coordinate
-    (metres east/north); distortion is negligible over < 1 km.
+The ACE Group Architects key plan (NAAC Cr. 4.1.1) was registered to satellite
+imagery and agrees with the OSM outline; see data/rvce/source/keyplan_registration.json.
 
     python tools/build_campus.py
 """
 
 import json
 import math
+import re
 from pathlib import Path
 
-from shapely.geometry import LineString, Point, shape
-from shapely.affinity import rotate
+from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import polygonize, unary_union
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "data" / "rvce" / "source" / "microsoft_buildings_rvce_area.geojson"
-OVERRIDES = ROOT / "data" / "rvce" / "overrides.json"
+SRC = ROOT / "data" / "rvce" / "source"
 OUT = ROOT / "data" / "rvce" / "campus.json"
+FACTS = json.loads((ROOT / "data" / "rvce" / "facts.json").read_text())
+OVERRIDES = ROOT / "data" / "rvce" / "overrides.json"
 
 LAT0, LON0 = 12.9239, 77.4997
 KX = math.cos(math.radians(LAT0)) * 111_320.0
 KY = 110_574.0
+FLOOR_HEIGHT_M = 3.5
+CAMPUS_WAY = 55685638
 
-EPI = {  # kWh/m2/yr, BEE/UNDP-GEF benchmarks, Moderate zone
+EPI = {   # kWh/m2/yr, BEE / UNDP-GEF benchmarks, Moderate climate zone
     "academic": (129, "BEE benchmark: Institutes, Moderate zone"),
     "library": (129, "BEE benchmark: Institutes, Moderate zone"),
-    "admin": (94, "BEE benchmark: Office buildings <50% AC, Moderate zone"),
-    "hostel": (94, "Proxy: BEE Office <50% AC (no BEE residential benchmark)"),
-    "canteen": (129, "BEE benchmark: Institutes, Moderate zone"),
+    "admin": (94, "BEE benchmark: Office buildings <50 % AC, Moderate zone"),
+    "hostel": (94, "Proxy: BEE Office <50 % AC (no BEE residential benchmark)"),
+    "food": (129, "BEE benchmark: Institutes, Moderate zone"),
     "health": (247, "BEE benchmark: Hospitals, Moderate zone"),
-    "other": (94, "Proxy: BEE Office <50% AC"),
+    "sports": (94, "Proxy: BEE Office <50 % AC"),
+    "residential": (94, "Proxy: BEE Office <50 % AC"),
+    "construction": (0, "Under construction: no load"),
+    "other": (94, "Proxy: BEE Office <50 % AC"),
 }
-FLOOR_HEIGHT_M = 3.5
+DEFAULT_FLOORS = {"academic": 3, "library": 3, "admin": 3, "hostel": 4, "food": 2, "health": 2,
+                  "sports": 2, "residential": 3, "construction": 4, "other": 2}
 
 
-def local(lon, lat):
+def local(lat, lon):
     return ((lon - LON0) * KX, (lat - LAT0) * KY)
 
 
+def classify(name, tags):
+    n = (name or "").lower()
+    if tags.get("building") == "construction" or tags.get("amenity") == "construction" or "u/c" in n \
+            or tags.get("construction") or tags.get("building") == "construction":
+        return "construction"
+    if re.search(r"hostel|cauvery|chamundi|krishna hostel|jubli|jubilee|m ?v hostel", n):
+        return "hostel"
+    if re.search(r"medical|health|clinic", n) or tags.get("amenity") in ("hospital", "clinic"):
+        return "health"
+    if re.search(r"mingos|food|canteen|cafe|mess", n) or tags.get("amenity") in ("fast_food", "restaurant", "cafe"):
+        return "food"
+    if "library" in n:
+        return "library"
+    if re.search(r"admin|placement", n):
+        return "admin"
+    if re.search(r"sport|gymnatorium|gym", n):
+        return "sports"
+    if re.search(r"quarters", n):
+        return "residential"
+    return "academic"
+
+
+def osm_polygon(e):
+    if e["type"] == "way" and e.get("geometry"):
+        pts = [local(p["lat"], p["lon"]) for p in e["geometry"]]
+        if len(pts) >= 4 and pts[0] == pts[-1]:
+            return Polygon(pts).buffer(0)
+    if e["type"] == "relation":
+        members = [m for m in e.get("members", []) if m.get("geometry")]
+        outer = [m for m in members if m.get("role") == "outer"] or [m for m in members if m.get("role") != "inner"]
+        lines = [LineString([local(p["lat"], p["lon"]) for p in m["geometry"]]) for m in outer if len(m["geometry"]) > 1]
+        polys = list(polygonize(unary_union(lines))) if lines else []
+        if polys:
+            return max(polys, key=lambda p: p.area)
+    return None
+
+
 def main():
-    features = json.loads(SOURCE.read_text())["features"]
+    osm = json.loads((SRC / "osm_rvce_area.json").read_text())["elements"]
+    msb = json.loads((SRC / "microsoft_buildings_rvce_area.geojson").read_text())["features"]
     overrides = json.loads(OVERRIDES.read_text()) if OVERRIDES.exists() else {}
-    polygons = []
-    for i, f in enumerate(features):
-        ring = [local(x, y) for x, y in f["geometry"]["coordinates"][0]]
-        polygons.append((i, shape({"type": "Polygon", "coordinates": [ring]})))
 
-    # Mysore Road corridor axis: the longest elongated footprint in the area
-    # (375 m x 37 m, the elevated metro structure along the road median).
-    def elongation(poly):
-        rect = poly.minimum_rotated_rectangle
-        xs, ys = rect.exterior.xy
-        edges = [math.hypot(xs[k + 1] - xs[k], ys[k + 1] - ys[k]) for k in range(2)]
-        return max(edges), min(edges), rect
+    campus_poly = next(osm_polygon(e) for e in osm if e["type"] == "way" and e["id"] == CAMPUS_WAY)
 
-    corridor_id, corridor = max(polygons, key=lambda p: elongation(p[1])[0] if elongation(p[1])[0] / max(elongation(p[1])[1], 1) > 6 else 0)
-    length, width, rect = elongation(corridor)
-    xs, ys = rect.exterior.xy
-    edges = [((xs[k], ys[k]), (xs[k + 1], ys[k + 1])) for k in range(4)]
-    (ax, ay), (bx, by) = max(edges, key=lambda e: math.dist(*e))
-    angle = math.atan2(by - ay, bx - ax)
-    ux, uy = math.cos(angle), math.sin(angle)
-    cx, cy = corridor.centroid.x, corridor.centroid.y
-    road = LineString([(cx - 900 * ux, cy - 900 * uy), (cx + 900 * ux, cy + 900 * uy)])
-
-    def side(x, y):  # >0 north-west of the corridor axis, <0 south-east
-        return ux * (y - cy) - uy * (x - cx)
-
+    # ------------------------------------------------------------ buildings
     buildings = []
-    for i, poly in polygons:
-        if i == corridor_id:
+    osm_polys = []
+    for e in osm:
+        tags = e.get("tags", {})
+        if "building" not in tags:
             continue
+        poly = osm_polygon(e)
+        if poly is None or poly.area < 15 or poly.geom_type != "Polygon":
+            continue
+        osm_polys.append(poly)
+        buildings.append({"source": "OpenStreetMap", "osm": f"{e['type']}/{e['id']}", "poly": poly,
+                          "name": tags.get("name"), "tags": tags})
+    osm_union = unary_union(osm_polys)
+    for i, f in enumerate(msb):
+        ring = [local(lat, lon) for lon, lat in f["geometry"]["coordinates"][0]]
+        poly = Polygon(ring).buffer(0)
+        if poly.area < 15:
+            continue
+        if poly.intersection(osm_union).area > 0.3 * poly.area:
+            continue        # already mapped in OSM
+        buildings.append({"source": "Microsoft ML footprints", "msb": i, "poly": poly, "name": None, "tags": {}})
+
+    # Named campus elements mapped as non-building areas (e.g. "Medical Centre") lend their
+    # name to the building that contains their centre.
+    named_areas = []
+    for e in osm:
+        tags = e.get("tags", {})
+        if tags.get("name") and "building" not in tags and e["type"] in ("way", "relation") and (
+                tags.get("amenity") or tags.get("building:part") or tags.get("landuse") == "university"):
+            p = osm_polygon(e)
+            if p is not None and p.area < 15000 and campus_poly.contains(p.centroid):
+                named_areas.append((p, tags["name"], tags))
+    # Building relations delivered without member geometry: fall back to their bounding box.
+    for e in osm:
+        tags = e.get("tags", {})
+        if e["type"] == "relation" and "building" in tags and tags.get("name") and not e.get("members") and e.get("bounds"):
+            b = e["bounds"]
+            (x0, y0), (x1, y1) = local(b["minlat"], b["minlon"]), local(b["maxlat"], b["maxlon"])
+            box = Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+            if campus_poly.contains(box.centroid):
+                named_areas.append((box, tags["name"], tags))
+
+    out_buildings = []
+    for k, b in enumerate(buildings):
+        poly = b["poly"]
         c = poly.centroid
-        key = str(i)
+        on_campus = campus_poly.contains(c)
+        name, tags = b["name"], b["tags"]
+        if on_campus and not name:
+            best = max(((poly.intersection(p).area / poly.area, n, t) for p, n, t in named_areas), default=(0, None, None))
+            if best[0] > 0.4:
+                name, tags = best[1], {**best[2], **tags}
+        key = b.get("osm") or f"msb/{b['msb']}"
         o = overrides.get(key, {})
-        default_campus = side(c.x, c.y) < -25 and math.hypot(c.x, c.y) <= 260 and poly.area >= 40
-        campus = o.get("campus", default_campus)
-        floors = o.get("floors", 3 if poly.area >= 300 else 2)
-        use = o.get("use", "academic" if campus else "other")
-        epi, epi_source = EPI.get(use, EPI["other"])
+        use = o.get("use") or (classify(name, tags) if on_campus else "other")
+        levels_tag = tags.get("building:levels")
+        if o.get("floors"):
+            floors, floors_src = int(o["floors"]), "confirmed"
+        elif levels_tag and re.fullmatch(r"\d+(\.\d+)?", levels_tag) and float(levels_tag) > 0:
+            floors, floors_src = int(round(float(levels_tag))), "OpenStreetMap building:levels"
+        else:
+            floors, floors_src = (DEFAULT_FLOORS[use] if on_campus else (3 if poly.area > 300 else 2)), "assumed"
+        institution = None
+        if on_campus:
+            institution = "RV University" if re.match(r"rvu\b|rv univ", (name or "").lower()) else "RVCE"
+        epi, epi_src = EPI.get(use, EPI["other"])
         floor_area = poly.area * floors
-        annual_kwh = floor_area * epi
-        buildings.append({
-            "id": i,
-            "name": o.get("name", f"Block {i}" if campus else None),
-            "campus": bool(campus),
-            "use": use,
-            "floors": floors,
+        annual = floor_area * epi
+        out_buildings.append({
+            "id": k, "key": key, "source": b["source"],
+            "name": o.get("name") or name, "campus": on_campus, "institution": institution,
+            "use": use, "floors": floors, "floors_source": floors_src,
             "height_m": round(floors * FLOOR_HEIGHT_M, 1),
-            "footprint_m2": round(poly.area, 1),
-            "floor_area_m2": round(floor_area, 1),
-            "epi_kwh_m2_yr": epi,
-            "epi_source": epi_source,
-            "annual_kwh": round(annual_kwh),
-            "average_kw": round(annual_kwh / 8760, 2),
-            "verified": bool(o),
+            "footprint_m2": round(poly.area, 1), "floor_area_m2": round(floor_area, 1),
+            "epi_kwh_m2_yr": epi, "epi_source": epi_src,
+            "annual_kwh": round(annual), "average_kw": round(annual / 8760, 2),
+            "verified": bool(o) or (b["source"] == "OpenStreetMap" and bool(name)),
             "centroid": [round(c.x, 1), round(c.y, 1)],
             "polygon": [[round(x, 2), round(y, 2)] for x, y in list(poly.exterior.coords)[:-1]],
         })
 
-    # Mysore Road carriageways either side of the metro median. NH-275 is a
-    # six-lane divided highway on this stretch; carriageway width 10.5 m per side
-    # (3 lanes x 3.5 m, IRC:SP:84 lane width) is a declared assumption.
-    half = width / 2 + 10.5 / 2 + 1.0
-    nx, ny = -uy, ux
-    road_lines = []
-    for sgn in (1, -1):
-        p0 = (cx - 700 * ux + sgn * half * nx, cy - 700 * uy + sgn * half * ny)
-        p1 = (cx + 700 * ux + sgn * half * nx, cy + 700 * uy + sgn * half * ny)
-        road_lines.append({"name": "Mysore Road (NH-275) carriageway", "width_m": 10.5,
-                           "points": [[round(p0[0], 1), round(p0[1], 1)], [round(p1[0], 1), round(p1[1], 1)]]})
-    # Streetlights on the carriageway edges every 30 m (illustrative spacing; IS 1944
-    # sets spacing from mounting height and lantern class, not modelled here).
-    lights = []
-    for sgn in (1, -1):
-        for k in range(-23, 24):
-            s = k * 30.0
-            off = half + sgn * 0 + 10.5 / 2 + 0.8
-            lights.append([round(cx + s * ux + sgn * off * nx, 1), round(cy + s * uy + sgn * off * ny, 1)])
+    # Calibrate energy to documented floor areas: RVCE built-up area (academic and support,
+    # 67,721 m2) and boys' hostels (38,659 m2), both from the NAAC SSR. Geometry is kept; the
+    # energy-bearing floor area of each building is scaled by its group's factor.
+    groups = {"hostel": FACTS["hostels"]["boys"]["area_m2"], "rest": FACTS["campus"]["built_up_m2"]}
+    rvce_live = [b for b in out_buildings if b["campus"] and b["institution"] == "RVCE" and b["use"] != "construction"]
+    for g, target in groups.items():
+        members = [b for b in rvce_live if (b["use"] == "hostel") == (g == "hostel")]
+        modelled = sum(b["floor_area_m2"] for b in members)
+        factor = target / modelled if modelled else 1.0
+        for b in members:
+            b["energy_floor_area_m2"] = round(b["floor_area_m2"] * factor, 1)
+            b["calibration_factor"] = round(factor, 3)
+            b["annual_kwh"] = round(b["energy_floor_area_m2"] * b["epi_kwh_m2_yr"])
+            b["average_kw"] = round(b["annual_kwh"] / 8760, 2)
+            b["epi_source"] += f"; floor area scaled x{factor:.2f} to the documented total"
 
-    # Neighbourhood: the simulator's 500 households are placed on the 500 non-campus
-    # footprints nearest the campus (declared mapping; household attributes are simulated).
-    # Larger simulated sites (apartments, clinics, cold chain, water pumping, shop) take the
-    # largest of those footprints so building scale stays plausible.
+    # Rooftop solar: 500 kW SRTPV on eight named buildings (BESCOM commissioning report;
+    # NAAC Cr. 7.1.2). Split by roof area, which the documents do not give per building.
+    solar = FACTS["solar"]
+    hosts = []
+    for name_pattern in solar["buildings_osm_name_patterns"]:
+        match = [b for b in out_buildings if b["campus"] and b["name"] and re.search(name_pattern, b["name"], re.I)]
+        if match:
+            hosts.append(max(match, key=lambda b: b["footprint_m2"]))
+    roof = sum(b["footprint_m2"] for b in hosts)
+    for b in hosts:
+        b["solar_kwp"] = round(solar["capacity_kw"] * b["footprint_m2"] / roof, 1)
+        b["solar_source"] = solar["source"] + " (share by roof area: assumed)"
+
+    # ------------------------------------------------------------ linework
+    widths = {"trunk": 21.0, "primary": 14.0, "tertiary": 8.0, "service": 5.0, "residential": 6.0,
+              "unclassified": 6.0, "footway": 2.5, "path": 2.0, "pedestrian": 4.0, "steps": 2.0}
+    roads, rail, river = [], [], []
+    for e in osm:
+        tags = e.get("tags", {})
+        if e["type"] != "way" or not e.get("geometry"):
+            continue
+        pts = [[round(v, 1) for v in local(p["lat"], p["lon"])] for p in e["geometry"]]
+        if tags.get("highway") in widths:
+            roads.append({"name": tags.get("name"), "kind": tags["highway"], "width_m": widths[tags["highway"]],
+                          "points": pts})
+        elif tags.get("railway") in ("subway", "light_rail", "rail") and not tags.get("service"):
+            rail.append({"name": tags.get("name"), "points": pts})
+        elif tags.get("name") == "Vrishabhavati" or tags.get("waterway") in ("river", "stream"):
+            river.append({"name": tags.get("name") or "stream", "points": pts})
+
+    # Streetlights along campus roads: the SSR reports solar-powered streetlights; spacing
+    # of 25 m is illustrative.
+    lights = []
+    for r in roads:
+        if r["kind"] not in ("service", "tertiary", "residential", "pedestrian"):
+            continue
+        line = LineString(r["points"])
+        if not campus_poly.buffer(20).intersects(line):
+            continue
+        for s in range(0, int(line.length), 25):
+            p = line.interpolate(s)
+            if campus_poly.buffer(10).contains(p):
+                lights.append([round(p.x, 1), round(p.y, 1)])
+
+    # ------------------------------------------------------------ neighbourhood
     def fleet_type(i):
         first = ["house", "house", "clinic", "house", "shop", "house",
                  "house", "apartment", "cold_chain", "water_service", "house", "house"]
@@ -150,48 +252,49 @@ def main():
             return first[i]
         return "apartment" if i % 20 == 0 else "clinic" if i % 50 == 0 else "house"
 
-    near = sorted((b for b in buildings if not b["campus"] and b["footprint_m2"] >= 30),
+    near = sorted((b for b in out_buildings if not b["campus"] and b["footprint_m2"] >= 30),
                   key=lambda b: math.hypot(*b["centroid"]))[:500]
     by_size = sorted(near, key=lambda b: -b["footprint_m2"])
-    large_types = [i for i in range(500) if fleet_type(i) != "house"]
-    assignment = {}
-    for i, b in zip(large_types, by_size):
-        assignment[i] = b
+    assignment = dict(zip([i for i in range(500) if fleet_type(i) != "house"], by_size))
     rest = [b for b in near if all(b is not v for v in assignment.values())]
-    for i in (i for i in range(500) if i not in assignment):
-        assignment[i] = rest.pop(0)
-    households = []
     for i in range(500):
-        b = assignment[i]
-        b["household"] = i
-        households.append({"fleet_index": i, "footprint_id": b["id"], "type": fleet_type(i)})
+        if i not in assignment:
+            assignment[i] = rest.pop(0)
+    households = [{"fleet_index": i, "footprint_id": assignment[i]["id"], "type": fleet_type(i)} for i in range(500)]
 
-    campus = [b for b in buildings if b["campus"]]
+    campus = [b for b in out_buildings if b["campus"]]
+    rvce = [b for b in campus if b["institution"] == "RVCE" and b["use"] != "construction"]
     out = {
-        "origin": {"lat": LAT0, "lon": LON0, "source": "RVCE published coordinates (Wikipedia infobox)"},
+        "origin": {"lat": LAT0, "lon": LON0, "source": "RVCE published coordinates"},
         "projection": "equirectangular about origin; x east, y north, metres",
         "sources": {
-            "footprints": "Microsoft Global ML Building Footprints, release 2026-02-03, ODbL 1.0",
-            "epi": "BEE / UNDP-GEF, Energy benchmarks for Commercial Buildings (Moderate zone)",
+            "outline_names_roads": "OpenStreetMap contributors, ODbL 1.0",
+            "unmapped_footprints": "Microsoft Global ML Building Footprints, ODbL 1.0",
+            "key_plan": "ACE Group Architects key plan in RVCE NAAC Cr. 4.1.1, registered to Esri World Imagery",
+            "facts": "RVCE NAAC SSR (2024), BESCOM SRTPV commissioning report, RVCE website",
+            "epi": "BEE / UNDP-GEF Energy benchmarks for Commercial Buildings (Moderate zone)",
         },
         "assumptions": [
-            "Campus membership, building names, uses and floor counts are defaults until verified in data/rvce/overrides.json.",
-            "Floor-to-floor height 3.5 m.",
-            "Annual energy from BEE EPI benchmarks; replace with RVCE meter data when available.",
-            "Road carriageway width and streetlight spacing are illustrative.",
-            "The 500 surrounding footprints nearest the campus carry the simulator's households; their types and appliances are simulated, not surveyed.",
+            "Floor height 3.5 m. Floors default by use where OpenStreetMap has no building:levels.",
+            "Energy from floor area x BEE benchmark; RVCE meter data would replace it.",
+            "Rooftop solar shares per building follow roof area (total 500 kW is documented).",
+            "Streetlight spacing (25 m) is illustrative; the SSR reports solar streetlights.",
+            "The 500 households are simulated, placed on the nearest non-campus footprints.",
         ],
-        "corridor": {"id": corridor_id, "length_m": round(length, 1), "width_m": round(width, 1),
-                     "polygon": [[round(x, 2), round(y, 2)] for x, y in list(corridor.exterior.coords)[:-1]]},
-        "roads": road_lines,
-        "streetlights": lights,
-        "summary": {"campus_buildings": len(campus), "context_buildings": len(buildings) - len(campus),
-                    "campus_floor_area_m2": round(sum(b["floor_area_m2"] for b in campus)),
-                    "campus_annual_mwh": round(sum(b["annual_kwh"] for b in campus) / 1000, 1),
-                    "campus_average_kw": round(sum(b["average_kw"] for b in campus), 1),
-                    "verified_buildings": sum(b["verified"] for b in buildings)},
+        "facts": FACTS,
+        "boundary": [[round(x, 1), round(y, 1)] for x, y in list(campus_poly.exterior.coords)[:-1]],
+        "roads": roads, "rail": rail, "river": river, "streetlights": lights,
+        "summary": {
+            "campus_area_acres": round(campus_poly.area / 4046.86, 2),
+            "campus_buildings": len(campus), "named": sum(1 for b in campus if b["name"]),
+            "rvce_floor_area_m2": round(sum(b["floor_area_m2"] for b in rvce)),
+            "rvce_energy_floor_area_m2": round(sum(b.get("energy_floor_area_m2", b["floor_area_m2"]) for b in rvce)),
+            "rvce_documented_built_up_m2": FACTS["campus"]["built_up_m2"],
+            "campus_average_kw": round(sum(b["average_kw"] for b in campus), 1),
+            "solar_hosts": [b["name"] for b in hosts],
+        },
         "households": households,
-        "buildings": buildings,
+        "buildings": out_buildings,
     }
     OUT.write_text(json.dumps(out, separators=(",", ":")))
     print(json.dumps(out["summary"], indent=1))
