@@ -133,6 +133,25 @@ function inflate(poly, d) {
   return poly.map(([x, y]) => { const l = Math.hypot(x - cx, y - cy) || 1; return [x + (x - cx) / l * d, y + (y - cy) / l * d]; });
 }
 
+// Flat strip along a polyline (x east, y north) at height h.
+function ribbon(points, width, h) {
+  if (!points || points.length < 2) return null;
+  const pos = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const [x0, y0] = points[i], [x1, y1] = points[i + 1];
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    if (len < 0.01) continue;
+    const nx = -(y1 - y0) / len * width / 2, ny = (x1 - x0) / len * width / 2;
+    const a = [x0 + nx, h, -(y0 + ny)], b = [x0 - nx, h, -(y0 - ny)], c = [x1 + nx, h, -(y1 + ny)], d = [x1 - nx, h, -(y1 - ny)];
+    pos.push(...a, ...b, ...c, ...c, ...b, ...d);
+  }
+  if (!pos.length) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
 // ---------------------------------------------------------------- world
 export class World {
   constructor(canvas, campus) {
@@ -208,54 +227,47 @@ export class World {
     scene.add(this.stars);
     scene.fog = new THREE.Fog(0xcfd8e3, 1600, 4200);
 
-    // Ground: urban base, campus lawn over the campus hull
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000),
-      new THREE.MeshStandardMaterial({ map: noiseTexture([142, 140, 134], 20, 60), roughness: 1 }));
+    // Everything procedural lives in modelLayer so the photorealistic view can hide it.
+    this.modelLayer = new THREE.Group();
+    scene.add(this.modelLayer);
+    const L = this.modelLayer;
+    // Ground: neutral base; satellite imagery replaces it when available (loadImagery).
+    this.groundMat = new THREE.MeshStandardMaterial({ map: noiseTexture([142, 140, 134], 20, 60), roughness: 1 });
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), this.groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
-    scene.add(ground);
-    const campusPts = campus.buildings.filter((b) => b.campus).flatMap((b) => b.polygon);
-    this.campusHull = inflate(convexHull(campusPts), 22);
-    const lawnShape = new THREE.Shape(this.campusHull.map(([x, y]) => new THREE.Vector2(x, y)));
-    const lawn = new THREE.Mesh(new THREE.ShapeGeometry(lawnShape),
+    L.add(ground);
+    // Campus outline from OpenStreetMap (way 55685638)
+    this.campusHull = campus.boundary;
+    this.drawnGround = new THREE.Group();
+    L.add(this.drawnGround);
+    const lawn = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(campus.boundary.map(([x, y]) => new THREE.Vector2(x, y)))),
       new THREE.MeshStandardMaterial({ map: noiseTexture([104, 126, 84], 26, 0.08), roughness: 1 }));
     lawn.geometry.rotateX(-Math.PI / 2);
     lawn.position.y = 0.05;
     lawn.receiveShadow = true;
-    scene.add(lawn);
-    // Paved aprons around campus buildings (illustrative hardscape).
-    const aprons = campus.buildings.filter((b) => b.campus).map((b) => {
-      const g = new THREE.ShapeGeometry(new THREE.Shape(inflate(b.polygon, 7).map(([x, y]) => new THREE.Vector2(x, y))));
-      g.rotateX(-Math.PI / 2); g.translate(0, 0.09, 0);
-      return g;
-    });
-    const apron = new THREE.Mesh(mergeGeometries(aprons), new THREE.MeshStandardMaterial({ map: noiseTexture([196, 192, 182], 16, 0.12), roughness: 0.95 }));
-    apron.receiveShadow = true;
-    scene.add(apron);
-    const edge = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(this.campusHull.map(([x, y]) => new THREE.Vector3(x, 0.3, -y))),
-      new THREE.LineBasicMaterial({ color: 0xe8e4d8 }));
-    scene.add(edge);
-
-    // Roads and the elevated metro corridor
-    const asphalt = new THREE.MeshStandardMaterial({ map: noiseTexture([58, 60, 64], 14, 40), roughness: 0.95 });
-    const paint = new THREE.MeshBasicMaterial({ color: 0xe9e6dc });
-    for (const road of campus.roads) {
-      const [[x0, y0], [x1, y1]] = road.points;
-      const len = Math.hypot(x1 - x0, y1 - y0), ang = Math.atan2(y1 - y0, x1 - x0);
-      const strip = new THREE.Mesh(new THREE.PlaneGeometry(len, road.width_m), asphalt);
-      strip.rotation.set(-Math.PI / 2, 0, ang);
-      strip.position.set((x0 + x1) / 2, 0.08, -(y0 + y1) / 2);
-      strip.receiveShadow = true;
-      scene.add(strip);
-      const dashes = [];
-      for (let s = 6; s < len; s += 14) for (const lane of [-1.75, 1.75]) {
-        const d = new THREE.PlaneGeometry(5, 0.18);
-        d.rotateX(-Math.PI / 2); d.rotateY(ang);
-        d.translate(x0 + Math.cos(ang) * s - Math.sin(ang) * lane, 0.12, -(y0 + Math.sin(ang) * s + Math.cos(ang) * lane));
-        dashes.push(d);
-      }
-      scene.add(new THREE.Mesh(mergeGeometries(dashes), paint));
+    this.drawnGround.add(lawn);
+    const edge = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(campus.boundary.map(([x, y]) => new THREE.Vector3(x, 0.6, -y))),
+      new THREE.LineBasicMaterial({ color: 0xf2efe6 }));
+    this.boundaryLine = edge;
+    scene.add(edge);          // the outline stays visible in both views
+    // Roads, paths, river and metro line from OpenStreetMap
+    const asphalt = new THREE.MeshStandardMaterial({ map: noiseTexture([58, 60, 64], 14, 40), roughness: 0.95, side: THREE.DoubleSide });
+    const paving = new THREE.MeshStandardMaterial({ map: noiseTexture([190, 186, 176], 14, 0.2), roughness: 0.95, side: THREE.DoubleSide });
+    const water = new THREE.MeshStandardMaterial({ color: 0x3b5560, roughness: 0.25, metalness: 0.1, side: THREE.DoubleSide });
+    const byKind = { asphalt: [], paving: [] };
+    for (const r of campus.roads) {
+      const g = ribbon(r.points, r.width_m, r.kind === "trunk" ? 0.1 : 0.12);
+      if (g) byKind[["footway", "path", "pedestrian", "steps"].includes(r.kind) ? "paving" : "asphalt"].push(g);
     }
+    for (const [k, mat] of [["asphalt", asphalt], ["paving", paving]]) {
+      if (!byKind[k].length) continue;
+      const m = new THREE.Mesh(mergeGeometries(byKind[k]), mat);
+      m.receiveShadow = true;
+      this.drawnGround.add(m);
+    }
+    const rivers = campus.river.map((r) => ribbon(r.points, 14, 0.07)).filter(Boolean);
+    if (rivers.length) this.drawnGround.add(new THREE.Mesh(mergeGeometries(rivers), water));
     this.buildViaduct();
 
     // Buildings
@@ -291,7 +303,7 @@ export class World {
     for (const [geos, mat] of [[contextWalls, ctxFacade], [contextRoofs, ctxRoof]]) {
       const m = new THREE.Mesh(mergeGeometries(geos), mat);
       m.castShadow = m.receiveShadow = true;
-      scene.add(m);
+      this.modelLayer.add(m);
     }
     this.ctxFacade = ctxFacade;
     // Households: merged, coloured per building through a vertex colour attribute
@@ -306,7 +318,7 @@ export class World {
       const mesh = new THREE.Mesh(geo, material);
       mesh.castShadow = mesh.receiveShadow = true;
       mesh.userData = { kind: "households", ranges };
-      this.scene.add(mesh);
+      this.modelLayer.add(mesh);
       return { mesh, ranges };
     };
     this.hhFacade = facadeFor(0xeee8dc);
@@ -318,39 +330,60 @@ export class World {
 
     this.buildTrees();
     this.buildStreetlights();
+    // Household state markers for the photorealistic view: a coloured column per home.
+    const hh = [...this.hhIndex.entries()];
+    const column = new THREE.CylinderGeometry(4, 4, 1, 16, 1, true);
+    column.translate(0, 0.5, 0);
+    this.hhMarkers = new THREE.InstancedMesh(column, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.75,
+      depthWrite: false, side: THREE.DoubleSide }), hh.length);
+    this.hhMarkerIndex = new Map();
+    const m4 = new THREE.Matrix4();
+    hh.forEach(([i, entry], k) => {
+      const [x, y] = entry.walls.b.centroid;
+      this.hhMarkerIndex.set(i, { k, x, y, h: entry.walls.b.height_m });
+      this.hhMarkers.setMatrixAt(k, m4.makeScale(0, 0, 0));
+      this.hhMarkers.setColorAt(k, new THREE.Color(0xffa21f));
+    });
+    this.hhMarkers.visible = false;
+    this.scene.add(this.hhMarkers);
   }
 
   buildViaduct() {
-    const c = this.campus.corridor;
-    const deck = extrude(c.polygon, 1.6);
-    deck.translate(0, 9, 0);
-    const mat = new THREE.MeshStandardMaterial({ color: 0xbfc3c8, roughness: 0.8 });
-    const mesh = new THREE.Mesh(deck, mat);
-    mesh.castShadow = mesh.receiveShadow = true;
-    this.scene.add(mesh);
-    // Pillars along the long axis of the corridor polygon
-    const pts = c.polygon;
-    let best = null;
-    for (let i = 0; i < pts.length; i++) {
-      const a = pts[i], b = pts[(i + 1) % pts.length];
-      const l = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      if (!best || l > best.l) best = { a, b, l };
+    // Elevated Purple Line along the OpenStreetMap metro alignment (deck height illustrative).
+    const mat = new THREE.MeshStandardMaterial({ color: 0xc4c7cb, roughness: 0.8 });
+    const decks = [], pillars = [];
+    for (const line of this.campus.rail) {
+      const g = ribbon(line.points, 9, 11);
+      if (g) decks.push(g);
+      for (let i = 0; i < line.points.length - 1; i++) {
+        const [x0, y0] = line.points[i], [x1, y1] = line.points[i + 1];
+        const len = Math.hypot(x1 - x0, y1 - y0);
+        for (let s = 0; s < len; s += 30) {
+          const p = new THREE.CylinderGeometry(1.0, 1.2, 11, 10);
+          p.translate(x0 + (x1 - x0) * s / len, 5.5, -(y0 + (y1 - y0) * s / len));
+          pillars.push(p);
+        }
+      }
     }
-    const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length, cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
-    const ux = (best.b[0] - best.a[0]) / best.l, uy = (best.b[1] - best.a[1]) / best.l;
-    const pillars = [];
-    for (let s = -best.l / 2 + 10; s < best.l / 2; s += 28) {
-      const p = new THREE.CylinderGeometry(1.1, 1.3, 9, 10);
-      p.translate(cx + ux * s, 4.5, -(cy + uy * s));
-      pillars.push(p);
-    }
+    if (!decks.length) return;
+    const deck = new THREE.Mesh(mergeGeometries(decks), mat);
+    deck.castShadow = deck.receiveShadow = true;
     const pm = new THREE.Mesh(mergeGeometries(pillars), mat);
     pm.castShadow = true;
-    this.scene.add(pm);
+    this.modelLayer.add(deck, pm);
   }
 
-  buildTrees() {
-    // Illustrative landscaping: jittered grid inside the campus hull, clear of buildings.
+  buildTrees(isVegetation = null) {
+    // Trees inside the campus outline, clear of buildings and roads. With satellite imagery
+    // they are planted only where the image shows vegetation; otherwise illustrative.
+    if (this.trees) { this.modelLayer.remove(...this.trees); this.trees.forEach((m) => m.geometry.dispose()); }
+    const roadSegs = this.campus.roads.filter((r) => r.kind !== "trunk").flatMap((r) =>
+      r.points.slice(1).map((p, i) => [r.points[i], p, r.width_m / 2 + 2]));
+    const onRoad = (x, y) => roadSegs.some(([[x0, y0], [x1, y1], w]) => {
+      const dx = x1 - x0, dy = y1 - y0, l2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((x - x0) * dx + (y - y0) * dy) / l2));
+      return Math.hypot(x - x0 - t * dx, y - y0 - t * dy) < w;
+    });
     const polys = this.campus.buildings.map((b) => b.polygon);
     const near = (x, y) => this.campus.buildings.some((b) => Math.hypot(b.centroid[0] - x, b.centroid[1] - y) < 70 &&
       (pointInPolygon(x, y, b.polygon) || b.polygon.some(([px, py]) => Math.hypot(px - x, py - y) < 6)));
@@ -361,7 +394,8 @@ export class World {
     for (let x = Math.min(...xs); x < Math.max(...xs); x += 13) {
       for (let y = Math.min(...ys); y < Math.max(...ys); y += 13) {
         const px = x + (rnd() - 0.5) * 10, py = y + (rnd() - 0.5) * 10;
-        if (pointInPolygon(px, py, this.campusHull) && !near(px, py) && rnd() < 0.55) spots.push([px, py, 0.7 + rnd() * 0.6]);
+        if (!pointInPolygon(px, py, this.campusHull) || near(px, py) || onRoad(px, py)) continue;
+        if (isVegetation ? isVegetation(px, py) : rnd() < 0.55) spots.push([px, py, 0.7 + rnd() * 0.6]);
       }
     }
     void polys;
@@ -379,7 +413,8 @@ export class World {
       crowns.setColorAt(i, color.setHSL(0.27 + rnd() * 0.06, 0.45, 0.28 + rnd() * 0.08));
     });
     trunks.castShadow = crowns.castShadow = true;
-    this.scene.add(trunks, crowns);
+    this.modelLayer.add(trunks, crowns);
+    this.trees = [trunks, crowns];
   }
 
   buildStreetlights() {
@@ -403,7 +438,137 @@ export class World {
     const m = new THREE.Matrix4();
     lights.forEach(([x, y], i) => { m.makeTranslation(x, 0, -y); poles.setMatrixAt(i, m); heads.setMatrixAt(i, m); pools.setMatrixAt(i, m); });
     poles.castShadow = true;
-    this.scene.add(poles, heads, pools);
+    this.modelLayer.add(poles, heads, pools);
+  }
+
+  // -------------------------------------------------------------- satellite ground
+  async loadImagery(z = 17) {
+    const { lat, lon } = this.campus.origin;
+    const KX = Math.cos(lat * Math.PI / 180) * 111320, KY = 110574;
+    const n = 2 ** z;
+    const tileOf = (la, lo) => [(lo + 180) / 360 * n, (1 - Math.log(Math.tan(la * Math.PI / 180) + 1 / Math.cos(la * Math.PI / 180)) / Math.PI) / 2 * n];
+    const toLatLon = (tx, ty) => [Math.atan(Math.sinh(Math.PI * (1 - 2 * ty / n))) * 180 / Math.PI, tx / n * 360 - 180];
+    const [cx, cy] = tileOf(lat, lon);
+    const R = 4;
+    const x0 = Math.floor(cx) - R, y0 = Math.floor(cy) - R, size = 2 * R + 1;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = size * 256;
+    const g = canvas.getContext("2d");
+    const jobs = [];
+    for (let i = 0; i < size; i++) for (let j = 0; j < size; j++) {
+      jobs.push(new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => { g.drawImage(img, i * 256, j * 256); resolve(true); };
+        img.onerror = () => resolve(false);
+        img.src = `/api/imagery/${z}/${y0 + j}/${x0 + i}`;
+      }));
+    }
+    const ok = (await Promise.all(jobs)).filter(Boolean).length;
+    if (ok < jobs.length * 0.6) return false;
+    const [latN, lonW] = toLatLon(x0, y0), [latS, lonE] = toLatLon(x0 + size, y0 + size);
+    const W = (lonE - lonW) * KX, H = (latN - latS) * KY;
+    const centre = [((lonW + lonE) / 2 - lon) * KX, ((latN + latS) / 2 - lat) * KY];
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }));
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.set(centre[0], 0.2, -centre[1]);
+    plane.receiveShadow = true;
+    this.modelLayer.add(plane);
+    this.drawnGround.visible = false;      // the real ground replaces drawn lawn, roads and river
+    // Vegetation test on the imagery (green dominant, not too dark) for tree placement.
+    const data = g.getImageData(0, 0, canvas.width, canvas.height).data;
+    const isVegetation = (x, y) => {
+      const u = (x - (centre[0] - W / 2)) / W, v = 1 - (y - (centre[1] - H / 2)) / H;
+      const px = Math.floor(u * canvas.width), py = Math.floor(v * canvas.height);
+      if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height) return false;
+      const k = (py * canvas.width + px) * 4, r = data[k], gg = data[k + 1], b = data[k + 2];
+      return gg > r * 1.05 && gg > b * 1.05 && gg > 55;
+    };
+    this.buildTrees(isVegetation);
+    this.imagery = true;
+    return true;
+  }
+
+  // -------------------------------------------------------------- photorealistic tiles
+  async loadPhotoreal(url) {
+    const { TilesRenderer } = await import("../vendor/3d-tiles-renderer/src/three/TilesRenderer.js");
+    const { GoogleCloudAuthPlugin } = await import("../vendor/3d-tiles-renderer/src/three/plugins/GoogleCloudAuthPlugin.js");
+    const { GLTFLoader } = await import("three/addons/loaders/GLTFLoader.js");
+    const { DRACOLoader } = await import("three/addons/loaders/DRACOLoader.js");
+    const key = new URL(url).searchParams.get("key");
+    const tiles = new TilesRenderer(url.split("?")[0]);
+    tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: key }));
+    const draco = new DRACOLoader();
+    draco.setDecoderPath("vendor/three/addons/libs/draco/");
+    const gltf = new GLTFLoader(tiles.manager);
+    gltf.setDRACOLoader(draco);
+    tiles.manager.addHandler(/\.(gltf|glb)$/g, gltf);
+    const { lat, lon } = this.campus.origin;
+    tiles.setLatLonToYUp(lat * Math.PI / 180, lon * Math.PI / 180);   // X north, Y up, Z east
+    this.tilesParent = new THREE.Group();
+    this.tilesParent.rotation.y = Math.PI / 2;                          // -> X east, -Z north
+    this.tilesParent.add(tiles.group);
+    this.tilesParent.visible = false;
+    // Google tiles carry WGS84 ellipsoid heights. Start from the campus ellipsoid height
+    // (about 840 m above sea level, minus about 87 m geoid undulation in Bengaluru, EGM2008)
+    // so the camera is above ground from the first frame; settleTiles() then refines it.
+    this.tilesParent.position.y = -(this.campus.origin.ellipsoid_height_m ?? 753);
+    this.scene.add(this.tilesParent);
+    tiles.setCamera(this.camera);
+    tiles.setResolutionFromRenderer(this.camera, this.renderer);
+    this.tiles = tiles;
+    this.groundOffsetFound = false;
+    return true;
+  }
+
+  // The ellipsoid sits below the real ground: find the terrain height at the campus once.
+  // Only hits close to the estimate count (coarse tiles near the root are kilometres off),
+  // and the offset is accepted once three successive refined hits agree.
+  settleTiles() {
+    if (!this.tiles || this.groundOffsetFound) return;
+    const now = performance.now();
+    if (now - (this.lastSettle || 0) < 500) return;
+    this.lastSettle = now;
+    // Lowest of several downward rays across the campus: ground, not a roof or tree.
+    let hit = null;
+    for (const [x, z] of [[60, -40], [-120, 60], [200, 80], [0, -200], [150, -180]]) {
+      const h = new THREE.Raycaster(new THREE.Vector3(x, 2000, z), new THREE.Vector3(0, -1, 0)).intersectObject(this.tiles.group, true)[0];
+      if (h && Math.abs(h.point.y) <= 150 && (!hit || h.point.y < hit.point.y)) hit = h;
+    }
+    if (!hit) return;
+    this.tilesParent.position.y -= hit.point.y;
+    this.tilesParent.updateMatrixWorld(true);
+    this.settleCount = Math.abs(hit.point.y) < 0.5 ? (this.settleCount || 0) + 1 : 0;
+    if (this.settleCount >= 3) this.groundOffsetFound = true;
+  }
+
+  setView(mode) {
+    this.view = mode;
+    const photo = mode === "photoreal" && this.tiles;
+    if (this.tilesParent) this.tilesParent.visible = !!photo;
+    this.modelLayer.visible = !photo;
+    this.sky.visible = true;
+    for (const mesh of this.campusMeshes.values()) this.styleCampus(mesh);
+    this.hhMarkers.visible = !!photo;
+  }
+
+  // In the photorealistic view campus buildings become translucent state overlays.
+  styleCampus(mesh) {
+    const photo = this.view === "photoreal" && this.tiles;
+    const s = mesh.userData.state ?? 0;
+    if (!mesh.userData.overlay) {
+      mesh.userData.overlay = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0 });
+      mesh.userData.solid = mesh.material;
+    }
+    if (!photo) { mesh.material = mesh.userData.solid; mesh.castShadow = true; return; }
+    const o = mesh.userData.overlay;
+    const sel = this.selected === mesh.userData.building.id;
+    o.color.set(s === 1 ? 0xffa21f : s === 2 ? 0xff3b30 : s === 3 ? 0xa78bfa : 0x5b9cf5);
+    o.opacity = s === 1 || s === 2 ? 0.55 : s === 3 ? 0.45 : sel ? 0.4 : 0.0;
+    mesh.material = o;
+    mesh.castShadow = false;
   }
 
   makeStars() {
@@ -459,7 +624,7 @@ export class World {
     this.ctxFacade.emissiveIntensity = lit * 0.6;
     for (const mesh of this.campusMeshes.values()) {
       const s = mesh.userData.state ?? 0;
-      mesh.material[1].emissiveIntensity = s === 2 ? 0 : lit * (s === 1 ? 0.7 : 1);
+      (mesh.userData.solid || mesh.material)[1].emissiveIntensity = s === 2 ? 0 : lit * (s === 1 ? 0.7 : 1);
     }
   }
 
@@ -480,23 +645,37 @@ export class World {
       }
     }
     colorWalls.needsUpdate = colorRoofs.needsUpdate = true;
+    if (this.hhMarkers) {
+      const m4 = new THREE.Matrix4(), c = new THREE.Color();
+      for (const [i, mk] of this.hhMarkerIndex) {
+        const st = state[i];
+        const on = st === 1 || st === 2;
+        m4.makeScale(on ? 1 : 0, on ? mk.h + 14 : 0, on ? 1 : 0).setPosition(mk.x, 0, -mk.y);
+        this.hhMarkers.setMatrixAt(mk.k, m4);
+        this.hhMarkers.setColorAt(mk.k, c.set(st === 2 ? 0xff3b30 : 0xffa21f));
+      }
+      this.hhMarkers.instanceMatrix.needsUpdate = true;
+      if (this.hhMarkers.instanceColor) this.hhMarkers.instanceColor.needsUpdate = true;
+    }
     for (const [i, id] of this.fleetToCampus) {
       const mesh = this.campusMeshes.get(id);
       if (!mesh) continue;
       const s = state[i];
       mesh.userData.state = s;
-      const [roof, facade] = mesh.material;
+      const [roof, facade] = mesh.userData.solid || mesh.material;   // overlay replaces it in photoreal
       const tint = STATE_TINT[s] || STATE_TINT[0];
       facade.color.setRGB(0.953 * tint.r, 0.937 * tint.g, 0.906 * tint.b);
       roof.color.set(s === 1 ? 0xf2a93b : s === 2 ? 0x3a3f47 : s === 3 ? 0xb197fc : this.selected === id ? 0x8fb4ff : 0x9db7dc);
+      this.styleCampus(mesh);
     }
     this.applyNight();
   }
 
   select(id) {
     this.selected = id;
+    for (const mesh of this.campusMeshes.values()) this.styleCampus(mesh);
     for (const [bid, mesh] of this.campusMeshes) {
-      if ((mesh.userData.state ?? 0) === 0) mesh.material[0].color.set(bid === id ? 0x8fb4ff : 0x9db7dc);
+      if ((mesh.userData.state ?? 0) === 0) (mesh.userData.solid || mesh.material)[0].color.set(bid === id ? 0x8fb4ff : 0x9db7dc);
     }
   }
 
@@ -556,6 +735,12 @@ export class World {
     }
     this.controls.update();
     this.sun.target.position.copy(this.controls.target);
+    if (this.tiles && this.tilesParent.visible) {
+      this.camera.updateMatrixWorld();
+      this.tiles.setResolutionFromRenderer(this.camera, this.renderer);
+      this.tiles.update();
+      this.settleTiles();
+    }
     if (this.split) {
       const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
       this.renderer.setScissorTest(true);
@@ -567,7 +752,8 @@ export class World {
       }
       this.renderer.setScissorTest(false);
       this.renderer.setViewport(0, 0, w, h);
-    } else if (this.quality && this.gtao) {
+    } else if (this.quality && this.gtao && !this.tilesParent?.visible) {
+      // GTAO needs normals the photogrammetry tiles lack (renders black); their lighting is baked in anyway.
       this.composer.render();
     } else {
       this.renderer.render(this.scene, this.camera);

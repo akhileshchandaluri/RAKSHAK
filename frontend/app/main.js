@@ -116,7 +116,8 @@ function placeLabels() {
     const sel = S.selected?.kind === "campus" && S.selected.building.id === b.id;
     if (s === 0 && !sel) continue;
     const kw = frame.k[r.data.campus_ids.indexOf(b.id)] ?? 0;
-    const text = s === 2 ? `<b>Feeder cut</b> · Block ${b.id}` : s === 1 ? `<b>AC paused</b> · Block ${b.id}` : `Block ${b.id} · ${kw.toFixed(0)} kW`;
+    const nm = esc(b.name || "Block " + b.id);
+    const text = s === 2 ? `<b>Feeder cut</b> · ${nm}` : s === 1 ? `<b>AC paused</b> · ${nm}` : `${nm} · ${kw.toFixed(0)} kW`;
     items.push({ b, cls: s === 2 ? "open" : s === 1 ? "curtailed" : "", sel, text });
   }
   // Simple collision avoidance: nudge a label upwards until it clears those already placed.
@@ -154,11 +155,13 @@ function renderBuilding(hit) {
     const meta = r.data.buildings.find((x) => x.campus_id === b.id);
     idx = meta?.i;
     const kw = r.frameAt(player.t).k[r.data.campus_ids.indexOf(b.id)] ?? 0;
-    title = `${esc(b.name || "Block " + b.id)}${b.verified ? "" : '<span class="badge">unverified</span>'}`;
-    rows = [["Use", b.use], ["Floors", `${b.floors} · ${b.height_m} m`], ["Floor area", `${b.floor_area_m2.toLocaleString()} m²`],
+    title = `${esc(b.name || "Unnamed building")}${b.name ? "" : '<span class="badge">unnamed</span>'}`;
+    rows = [["Institution", b.institution || "—"], ["Use", b.use], ["Floors", `${b.floors} · ${b.height_m} m (${b.floors_source === "assumed" ? "assumed" : "OSM"})`],
+      ["Footprint", `${b.footprint_m2.toLocaleString()} m²`],
       ["Benchmark", `${b.epi_kwh_m2_yr} kWh/m²/yr`], ["Annual energy", `${(b.annual_kwh / 1000).toFixed(0)} MWh`],
       ["Average demand", `${b.average_kw.toFixed(1)} kW`], ["Demand now", `${kw.toFixed(1)} kW`]];
-    note = "Footprint from satellite imagery (Microsoft, ODbL). Energy from floor area × BEE benchmark. Name, use and floors are defaults until RVCE confirms them.";
+    if (b.solar_kwp) rows.push(["Rooftop solar", `${b.solar_kwp} kW (of 500 kW campus)`]);
+    note = `Outline: ${b.source}. ${b.calibration_factor ? `Energy floor area scaled ×${b.calibration_factor} so RVCE totals match the NAAC-reported built-up area. ` : ""}${b.solar_kwp ? "Solar host listed in RVCE's BESCOM rooftop-PV report; share by roof area. " : ""}`;
   } else {
     idx = hit.fleetIndex;
     const meta = r.data.buildings[idx];
@@ -382,6 +385,45 @@ $("tod").addEventListener("input", () => { $("o-tod").textContent = clock(+$("to
 $("cam-orbit").addEventListener("click", () => S.world.flyTo({ target: [70, -20], distance: 760, polar: 0.92, azimuth: -0.72 }));
 $("cam-plan").addEventListener("click", () => S.world.flyTo({ target: [70, -20], distance: 980, polar: 0.05, azimuth: 0 }));
 
+// ---------------------------------------------------------------- map data
+const ATTR = {
+  osm: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+  msb: 'Microsoft Building Footprints',
+  esri: 'Imagery: Esri, Maxar, Earthstar Geographics',
+};
+function setAttribution(extra = []) {
+  const parts = S.world?.view === "photoreal" ? extra : [ATTR.esri, ATTR.osm, ATTR.msb];
+  $("attribution").innerHTML = parts.join(" · ");
+}
+async function initMapData() {
+  let tilesAttr = [];
+  const imagery = S.world.loadImagery().catch(() => false);   // drawn ground stays if it fails
+  try {
+    const t = await fetchJSON("/api/tiles3d");
+    await S.world.loadPhotoreal(t.url);
+    // Credits as text (the provider logo images need extra hosts and break offline).
+    tilesAttr = ["Map data ©" + new Date().getFullYear() + " Google", "Cesium ion", ATTR.osm];
+    $("view-photo").disabled = false;
+  } catch (_) {
+    $("view-photo").disabled = true;
+    $("view-photo").title = "Photorealistic 3D tiles unavailable (needs internet and a Cesium token)";
+  }
+  const choose = (mode) => {
+    if (mode === "photoreal" && !S.world.tiles) mode = "model";
+    S.world.setView(mode);
+    $("view-photo").setAttribute("aria-pressed", String(mode === "photoreal"));
+    $("view-model").setAttribute("aria-pressed", String(mode === "model"));
+    setAttribution(tilesAttr);
+    try { localStorage.setItem("rakshak.scene", mode); } catch (_) { /* storage unavailable */ }
+  };
+  $("view-photo").onclick = () => choose("photoreal");
+  $("view-model").onclick = () => choose("model");
+  let saved = null;
+  try { saved = localStorage.getItem("rakshak.scene"); } catch (_) { /* default */ }
+  choose(saved || (S.world.tiles ? "photoreal" : "model"));
+  await imagery;
+}
+
 // ---------------------------------------------------------------- boot
 async function boot() {
   renderMethods($("page-methods"));
@@ -390,10 +432,11 @@ async function boot() {
   ]);
   S.campus = await fetchJSON("/api/campus");
   S.world = new World($("world"), S.campus);
-  window.__rakshak = S;   // inspection hook for automated browser checks
+  if (new URLSearchParams(location.search).has("debug")) window.__rakshak = S;   // inspection hook for browser tests
   S.world.onPick = (hit) => selectBuilding(hit);
   S.world.onFrame = placeLabels;
   S.world.flyTo({ target: [70, -20], distance: 760, polar: 0.92, azimuth: -0.72, duration: 0.01 });
   await route();
+  initMapData();
 }
 boot().catch((err) => { busy(true, "Could not start: " + err.message); });

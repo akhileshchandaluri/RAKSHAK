@@ -122,6 +122,65 @@ def warm_replays():
     threading.Thread(target=precompute, args=(inventory_store.snapshot(),), daemon=True).start()
 
 
+# --------------------------------------------------------------------------- map data
+# Keys stay on the server. On a laptop set RAKSHAK_CESIUM_TOKEN / RAKSHAK_ARCGIS_KEY; in the
+# cloud development session the network proxy injects them ("proxy-injected" placeholder).
+import json as _json
+import math as _math
+import time as _time
+import urllib.request as _urlreq
+from fastapi.responses import Response as _Response
+
+_tiles3d_cache = {"at": 0.0, "data": None}
+_CAMPUS_LAT, _CAMPUS_LON = 12.9239, 77.4997
+
+
+@app.get("/api/tiles3d")
+def tiles3d():
+    """Google Photorealistic 3D Tiles root URL via Cesium ion (asset 2275207)."""
+    if _tiles3d_cache["data"] and _time.time() - _tiles3d_cache["at"] < 1800:
+        return _tiles3d_cache["data"]
+    token = os.getenv("RAKSHAK_CESIUM_TOKEN", "proxy-injected")
+    req = _urlreq.Request("https://api.cesium.com/v1/assets/2275207/endpoint",
+                          headers={"Authorization": f"Bearer {token}", "User-Agent": "rakshak-twin"})
+    try:
+        with _urlreq.urlopen(req, timeout=20) as res:
+            body = _json.loads(res.read())
+    except Exception as exc:   # network or credential problem: the client falls back to the model view
+        raise HTTPException(503, f"3D tiles unavailable: {exc}")
+    data = {"url": body["options"]["url"], "attributions": [a["html"] for a in body.get("attributions", [])]}
+    _tiles3d_cache.update(at=_time.time(), data=data)
+    return data
+
+
+def _tile_xy(lat, lon, z):
+    n = 2 ** z
+    return ((lon + 180) / 360 * n,
+            (1 - _math.log(_math.tan(_math.radians(lat)) + 1 / _math.cos(_math.radians(lat))) / _math.pi) / 2 * n)
+
+
+@app.get("/api/imagery/{z}/{y}/{x}")
+def imagery(z: int, y: int, x: int):
+    """Esri World Imagery tiles around the campus only (display use, not stored)."""
+    if not 14 <= z <= 19:
+        raise HTTPException(400, "zoom out of range")
+    cx, cy = _tile_xy(_CAMPUS_LAT, _CAMPUS_LON, z)
+    reach = 2 ** (z - 14) * 1.5          # about 3.6 km around the campus at any zoom
+    if abs(x + 0.5 - cx) > reach or abs(y + 0.5 - cy) > reach:
+        raise HTTPException(403, "outside the campus area")
+    key = os.getenv("RAKSHAK_ARCGIS_KEY", "proxy-injected")
+    url = f"https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token={key}"
+    req = _urlreq.Request(url, headers={"X-Esri-Authorization": f"Bearer {key}", "User-Agent": "rakshak-twin"})
+    try:
+        with _urlreq.urlopen(req, timeout=20) as res:
+            content, ctype = res.read(), res.headers.get("Content-Type", "image/jpeg")
+    except Exception as exc:
+        raise HTTPException(503, f"imagery unavailable: {exc}")
+    if not ctype.startswith("image/"):
+        raise HTTPException(502, "imagery service returned an error")
+    return _Response(content=content, media_type=ctype, headers={"Cache-Control": "private, max-age=3600"})
+
+
 @app.get("/api/campus")
 def campus_model():
     from campus import load_campus

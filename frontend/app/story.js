@@ -11,11 +11,12 @@ export const SCENES = [
     replay: "aufls", from: 0, to: 0,
     camera: CAMPUS_VIEW,
     body: () => `
-      <p>Every building here is a real footprint detected from satellite imagery. The blue-roofed blocks are the
-      RVCE campus; the surrounding streets carry the 500 homes, shops, clinics and a water pumping station that
-      share its part of the grid.</p>
-      <p>Each building's demand comes from its floor area and the Bureau of Energy Efficiency benchmark for
-      institutes in Bengaluru's climate. Click any building to inspect it.</p>`,
+      <p>The campus outline, building names, floor counts, roads, metro line and the Vrishabhavati river come from
+      OpenStreetMap and agree with the architects' campus key plan. Energy is calibrated to RVCE's NAAC-reported
+      built-up area (67,721 m²) and hostel area (38,659 m²); the 500 kW rooftop solar sits on the eight buildings named
+      in RVCE's BESCOM report.</p>
+      <p>The surrounding streets carry 500 simulated homes, shops and clinics sharing this part of the grid.
+      Click any building to see where each number comes from.</p>`,
   },
   {
     id: "trip", step: "The event",

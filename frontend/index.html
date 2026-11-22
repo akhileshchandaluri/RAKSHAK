@@ -11,7 +11,7 @@
     try { const t = localStorage.getItem("rakshak.theme"); if (t && t !== "system") document.documentElement.dataset.theme = t; } catch (_) {}
   </script>
   <script type="importmap">
-    { "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/addons/" } }
+    { "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/addons/", "three/examples/jsm/": "./vendor/three/addons/" } }
   </script>
 </head>
 <body>
@@ -43,6 +43,7 @@
     <div class="split-divider" id="split-divider" hidden>
       <span class="side-tag left" id="tag-left"></span><span class="side-tag right" id="tag-right"></span>
     </div>
+    <div class="attribution" id="attribution"></div>
     <div class="loading" id="loading" hidden><span class="spinner"></span><span id="loading-text">Simulating…</span></div>
 
     <!-- Story -->
@@ -111,6 +112,10 @@
 
     <!-- View controls -->
     <div class="view-tools" id="view-tools">
+      <div class="seg" role="group" aria-label="Scene">
+        <button class="chip-btn" id="view-photo" aria-pressed="false" title="Google photorealistic 3D campus">Photoreal</button>
+        <button class="chip-btn" id="view-model" aria-pressed="true" title="Simulation model over satellite imagery">Model</button>
+      </div>
       <button class="chip-btn" id="cam-orbit" title="Bird's-eye orbit">3D</button>
       <button class="chip-btn" id="cam-plan" title="Plan view">Plan</button>
       <label class="chip-btn tod" title="Time of day"><span id="o-tod">13:00</span><input type="range" id="tod" min="0" max="24" step="0.25" value="13"></label>
