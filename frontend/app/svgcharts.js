@@ -29,7 +29,7 @@ export function lineChart(host, { series, refs = [], marks = [], cursor = null, 
   xLabel = "", yLabel = "", height = 200, legend = true }) {
   const width = Math.max(240, host.clientWidth || 360);
   const legendRows = legend ? Math.ceil(series.filter((s) => s.label).reduce((w, s) => w + 30 + s.label.length * 6.2, 0) / Math.max(200, (host.clientWidth || 360) - 8)) : 0;
-  const pad = { l: 46, r: 12, t: legend ? 12 + 15 * legendRows : 10, b: 30 };
+  const pad = { l: yLabel ? 54 : 46, r: 12, t: legend ? 12 + 15 * legendRows : 10, b: 30 };
   const pts = series.flatMap((s) => s.points);
   if (!pts.length) { host.innerHTML = ""; return; }
   x0 ??= Math.min(...pts.map((p) => p[0])); x1 ??= Math.max(...pts.map((p) => p[0]));
@@ -48,7 +48,9 @@ export function lineChart(host, { series, refs = [], marks = [], cursor = null, 
   }
   for (const v of xt.values) el("text", { x: X(v), y: height - pad.b + 16, "text-anchor": "middle" }, svg).textContent = fmt(v, xt.step);
   if (xLabel) el("text", { x: width - pad.r, y: height - 2, "text-anchor": "end", class: "axis-label" }, svg).textContent = xLabel;
-  if (yLabel) el("text", { x: pad.l - 6, y: pad.t + 4, "text-anchor": "end", class: "axis-label", dy: "-12" }, svg).textContent = yLabel;
+  // Rotated beside the axis so it never meets the legend above the plot.
+  if (yLabel) el("text", { x: 0, y: 0, "text-anchor": "middle", class: "axis-label",
+    transform: `translate(11 ${(pad.t + height - pad.b) / 2}) rotate(-90)` }, svg).textContent = yLabel;
   const clipId = "c" + Math.random().toString(36).slice(2);
   el("rect", { x: pad.l, y: pad.t, width: width - pad.l - pad.r, height: height - pad.t - pad.b }, el("clipPath", { id: clipId }, el("defs", {}, svg)));
   const plot = el("g", { "clip-path": `url(#${clipId})` }, svg);

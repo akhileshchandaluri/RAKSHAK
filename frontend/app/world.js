@@ -476,6 +476,12 @@ export class World {
     plane.position.set(centre[0], 0.2, -centre[1]);
     plane.receiveShadow = true;
     this.modelLayer.add(plane);
+    // Under the photorealistic tiles a copy fills any tile not streamed in yet.
+    this.imageryUnder = new THREE.Mesh(plane.geometry, new THREE.MeshBasicMaterial({ map: tex }));
+    this.imageryUnder.rotation.x = -Math.PI / 2;
+    this.imageryUnder.position.set(centre[0], -3, -centre[1]);
+    this.imageryUnder.visible = this.view === "photoreal" && !!this.tiles;
+    this.scene.add(this.imageryUnder);
     this.drawnGround.visible = false;      // the real ground replaces drawn lawn, roads and river
     // Vegetation test on the imagery (green dominant, not too dark) for tree placement.
     const data = g.getImageData(0, 0, canvas.width, canvas.height).data;
@@ -549,6 +555,7 @@ export class World {
     const photo = mode === "photoreal" && this.tiles;
     if (this.tilesParent) this.tilesParent.visible = !!photo;
     this.modelLayer.visible = !photo;
+    if (this.imageryUnder) this.imageryUnder.visible = !!photo;
     this.sky.visible = true;
     for (const mesh of this.campusMeshes.values()) this.styleCampus(mesh);
     this.hhMarkers.visible = !!photo;

@@ -40,7 +40,7 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
-body { display: grid; grid-template-rows: 56px 1fr 64px; overflow: hidden; }
+body { display: grid; grid-template-rows: 56px 1fr 64px; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
 button, select, input { font: inherit; color: inherit; }
 h1, h2, h3 { margin: 0; letter-spacing: -.01em; }
 .muted { color: var(--muted); }
@@ -107,8 +107,9 @@ h1, h2, h3 { margin: 0; letter-spacing: -.01em; }
 
 /* Compare */
 .compare { width: 420px; }
+.compare-pickers select { width: 100%; min-width: 0; }
 .compare-pickers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-.compare-pickers label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.compare-pickers label { min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
 .kpi-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 0; font-size: 13px; }
 .kpi-grid > div { padding: 7px 6px; border-bottom: 1px solid var(--line); }
 .kpi-grid .h { color: var(--muted); font-size: 12px; font-weight: 500; }
@@ -232,7 +233,8 @@ body.page-mode .timeline, body.page-mode .stage { display: none; }
 @media (max-width: 900px) {
   body { grid-template-rows: auto 1fr 64px; }
   .bar { flex-wrap: wrap; gap: 8px 16px; padding: 8px 14px; }
-  .modes { order: 3; width: 100%; overflow-x: auto; }
+  .modes { order: 3; width: 100%; min-width: 0; overflow-x: auto; }
+  .brand small { display: none; }
   .panel { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 52%; padding: 16px; }
   .building, .drawer { left: 8px; right: 8px; width: auto; top: 8px; bottom: auto; max-height: 60%; }
   .view-tools { top: 8px; bottom: auto; left: 8px; }
